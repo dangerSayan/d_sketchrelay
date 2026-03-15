@@ -13,7 +13,7 @@ const app = express();
 const httpServer = http.createServer(app);
 const allowedOrigins = [
   "http://localhost:5173",
-  "https://your-app.vercel.app", // you'll fill this in after Vercel deploy
+  "https://d-sketchrelay.vercel.app/login", // you'll fill this in after Vercel deploy
 ];
 
 const io = new Server(httpServer, {
