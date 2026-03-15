@@ -1,0 +1,38 @@
+.wrapper {
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 12px;
+  padding: 1rem;
+}
+
+.title {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #475569;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 0.75rem;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0;
+  border-bottom: 1px solid #1e293b;
+  font-size: 0.9rem;
+}
+
+.rank {
+  color: #475569;
+  width: 28px;
+  font-size: 0.8rem;
+}
+.name {
+  flex: 1;
+  color: #e2e8f0;
+}
+.score {
+  color: #818cf8;
+  font-weight: 700;
+}

@@ -11,15 +11,25 @@ const socketHandler = require("./socket/socketHandler"); // ADD THIS
 
 const app = express();
 const httpServer = http.createServer(app);
+const allowedOrigins = [
+  "http://localhost:5173",
+  "https://your-app.vercel.app", // you'll fill this in after Vercel deploy
+];
+
 const io = new Server(httpServer, {
   cors: {
-    origin: "http://localhost:5173",
+    origin: allowedOrigins,
     methods: ["GET", "POST"],
     credentials: true,
   },
 });
 
-app.use(cors({ origin: "http://localhost:5173", credentials: true }));
+app.use(
+  cors({
+    origin: allowedOrigins,
+    credentials: true,
+  }),
+);
 app.use(express.json());
 
 // Mount the auth router at '/api/auth'

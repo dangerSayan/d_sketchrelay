@@ -1,0 +1,206 @@
+.page {
+  min-height: 100vh;
+  background: #0f172a;
+  color: #f1f5f9;
+  padding: 1.5rem;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 2rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #1e293b;
+}
+
+.logo {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: #818cf8;
+}
+
+.userInfo {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  color: #94a3b8;
+  font-size: 0.9rem;
+}
+
+.userInfo strong {
+  color: #f1f5f9;
+}
+
+.logoutBtn {
+  background: transparent;
+  border: 1px solid #334155;
+  color: #94a3b8;
+  padding: 0.4rem 0.8rem;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  transition: all 0.15s;
+}
+
+.logoutBtn:hover {
+  border-color: #ef4444;
+  color: #ef4444;
+}
+
+.globalError {
+  background: #450a0a;
+  border: 1px solid #7f1d1d;
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  color: #fca5a5;
+  margin-bottom: 1.5rem;
+  font-size: 0.9rem;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.card {
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 16px;
+  padding: 1.75rem;
+}
+
+.card h2 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #e2e8f0;
+  margin-bottom: 1.25rem;
+}
+
+.fullWidth {
+  grid-column: 1 / -1; /* spans both columns */
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.field label {
+  color: #94a3b8;
+  font-size: 0.85rem;
+}
+
+.field input[type="range"] {
+  accent-color: #6366f1;
+  width: 100%;
+}
+
+.field input[type="text"] {
+  background: #0f172a;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  padding: 0.6rem 0.875rem;
+  color: #f1f5f9;
+  font-size: 0.95rem;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.field input[type="text"]:focus {
+  border-color: #6366f1;
+}
+
+.codeInput {
+  font-size: 1.4rem !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.25rem;
+  text-transform: uppercase;
+}
+
+.primaryBtn {
+  background: #6366f1;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 0.7rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  transition:
+    background 0.15s,
+    opacity 0.15s;
+  margin-top: 0.25rem;
+}
+
+.primaryBtn:hover:not(:disabled) {
+  background: #4f46e5;
+}
+.primaryBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.muted {
+  color: #475569;
+  font-size: 0.9rem;
+  text-align: center;
+  padding: 1rem 0;
+}
+
+.roomList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.roomRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #0f172a;
+  border: 1px solid #1e293b;
+  border-radius: 10px;
+  padding: 0.75rem 1rem;
+}
+
+.roomCode {
+  font-weight: 700;
+  font-size: 1rem;
+  color: #818cf8;
+  letter-spacing: 0.1rem;
+  margin-right: 0.75rem;
+}
+
+.roomMeta {
+  color: #64748b;
+  font-size: 0.85rem;
+}
+
+.joinBtn {
+  background: #064e3b;
+  color: #6ee7b7;
+  border: 1px solid #065f46;
+  border-radius: 6px;
+  padding: 0.4rem 0.9rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  transition: all 0.15s;
+}
+
+.joinBtn:hover:not(:disabled) {
+  background: #065f46;
+}
+
+.joinBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
