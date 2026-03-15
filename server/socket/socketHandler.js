@@ -262,6 +262,45 @@ module.exports = (io) => {
     });
 
     // ═══════════════════════════════════════════════════════════
+    // EVENT: canvas-state
+    // Drawer sends full canvas PNG after fill / undo / redo so all
+    // clients stay in sync without replaying individual commands.
+    // ═══════════════════════════════════════════════════════════
+    socket.on("canvas-state", ({ roomCode, dataURL }) => {
+      const game = gameManager.getGame(roomCode);
+      const drawer = gameManager.getCurrentDrawer(roomCode);
+      if (!game || !drawer || !drawer.socketId || drawer.socketId !== socket.id)
+        return;
+      socket.to(roomCode).emit("canvas-state-broadcast", { dataURL });
+    });
+
+    // ═══════════════════════════════════════════════════════════
+    // EVENT: cursor-move
+    // Drawer cursor position — broadcast to all watchers.
+    // ═══════════════════════════════════════════════════════════
+    socket.on("cursor-move", ({ roomCode, x, y }) => {
+      const game = gameManager.getGame(roomCode);
+      const drawer = gameManager.getCurrentDrawer(roomCode);
+      if (!game || !drawer || !drawer.socketId || drawer.socketId !== socket.id)
+        return;
+      socket
+        .to(roomCode)
+        .emit("cursor-update", { x, y, username: socket.username });
+    });
+
+    // ═══════════════════════════════════════════════════════════
+    // EVENT: shape-preview
+    // Drawer broadcasts live shape drag so others see it in real time.
+    // ═══════════════════════════════════════════════════════════
+    socket.on("shape-preview", ({ roomCode, preview }) => {
+      const game = gameManager.getGame(roomCode);
+      const drawer = gameManager.getCurrentDrawer(roomCode);
+      if (!game || !drawer || !drawer.socketId || drawer.socketId !== socket.id)
+        return;
+      socket.to(roomCode).emit("shape-preview", preview);
+    });
+
+    // ═══════════════════════════════════════════════════════════
     // EVENT: send-guess
     // ═══════════════════════════════════════════════════════════
     socket.on("send-guess", ({ roomCode, guess, userId }) => {

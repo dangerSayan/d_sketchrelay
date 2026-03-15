@@ -1,97 +1,352 @@
 /* client/src/components/Canvas.module.css */
 
+/* ── Outer wrapper: [toolbar] [canvas] side by side ──────────────────────*/
 .wrapper {
   display: flex;
-  flex-direction: column;
-  gap: 0.6rem;
+  flex-direction: row;
+  flex: 1;
   min-height: 0;
+  overflow: hidden;
 }
 
-.canvas {
-  width: 100%;
-  border-radius: 12px;
-  border: 2px solid #334155;
-  display: block;
-  /* Prevent browser handling of touch gestures on the canvas */
-  touch-action: none;
-}
-
-.tools {
+/* ── Left toolbar ─────────────────────────────────────────────────────── */
+.toolbar {
+  width: 136px;
+  flex-shrink: 0;
+  background: #0f172a;
+  border: 1px solid #334155;
+  border-right: none;
+  border-radius: 12px 0 0 12px;
   display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  flex-wrap: wrap;
+  flex-direction: column;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: #334155 transparent;
+  padding: 6px 5px;
+  gap: 0;
+}
+.toolbar::-webkit-scrollbar {
+  width: 3px;
+}
+.toolbar::-webkit-scrollbar-thumb {
+  background: #334155;
+  border-radius: 2px;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 5px 0;
+  border-bottom: 1px solid #1e293b;
+}
+.section:last-child {
+  border-bottom: none;
+}
+
+.sectionLabel {
+  font-size: 0.6rem;
+  font-weight: 700;
+  color: #475569;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 0 2px;
+}
+
+/* Tools */
+.toolGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 3px;
+}
+.toolBtn {
   background: #1e293b;
   border: 1px solid #334155;
-  border-radius: 10px;
-  padding: 0.55rem 0.9rem;
-}
-
-.colors {
+  border-radius: 7px;
+  padding: 6px 2px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.12s;
   display: flex;
-  gap: 5px;
-  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  color: #e2e8f0;
+}
+.toolBtn:hover {
+  background: #334155;
+  border-color: #6366f1;
+}
+.toolBtnActive {
+  background: #312e81;
+  border-color: #6366f1;
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.4);
 }
 
-.colorBtn {
-  width: 22px;
-  height: 22px;
+/* Size */
+.sizePresets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+}
+.sizeBtn {
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 6px;
+  padding: 4px;
+  cursor: pointer;
+  transition: all 0.12s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 26px;
+  min-height: 26px;
+}
+.sizeBtn:hover {
+  background: #334155;
+  border-color: #6366f1;
+}
+.sizeBtnActive {
+  background: #312e81;
+  border-color: #6366f1;
+}
+.sizeDot {
   border-radius: 50%;
+  background: #e2e8f0;
+  display: block;
+  flex-shrink: 0;
+}
+.sizeSlider {
+  width: 100%;
+  accent-color: #6366f1;
+  margin: 2px 0;
+}
+.sizeValue {
+  font-size: 0.65rem;
+  color: #64748b;
+  text-align: center;
+}
+
+/* Palette */
+.palette {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 2px;
+}
+.colorBtn {
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 3px;
   border: 2px solid transparent;
   cursor: pointer;
   transition:
     transform 0.1s,
     border-color 0.1s;
-  flex-shrink: 0;
+  min-height: 16px;
 }
 .colorBtn:hover {
-  transform: scale(1.25);
+  transform: scale(1.2);
   border-color: #f1f5f9;
+  z-index: 1;
+  position: relative;
 }
-
-.sizeRow {
+.colorBtnActive {
+  border-color: #fff;
+  box-shadow: 0 0 0 2px #6366f1;
+}
+.colorBottom {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
+  margin-top: 2px;
 }
-
-.sizeLabel {
-  color: #94a3b8;
-  font-size: 0.8rem;
+.currentColor {
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  border: 2px solid #f1f5f9;
+  flex-shrink: 0;
+}
+.pickerWrap {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  cursor: pointer;
+}
+.colorPicker {
+  width: 26px;
+  height: 22px;
+  border: 1px solid #334155;
+  border-radius: 4px;
+  padding: 0;
+  background: none;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.pickerLabel {
+  font-size: 0.6rem;
+  color: #64748b;
   white-space: nowrap;
 }
 
-.sizeRow input {
-  accent-color: #6366f1;
-  width: 70px;
+/* Actions */
+.actionRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 3px;
 }
-
+.actionBtn {
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 5px;
+  color: #94a3b8;
+  font-size: 0.62rem;
+  font-weight: 600;
+  padding: 5px 2px;
+  cursor: pointer;
+  transition: all 0.12s;
+  text-align: center;
+  white-space: nowrap;
+}
+.actionBtn:hover:not(:disabled) {
+  background: #334155;
+  color: #e2e8f0;
+  border-color: #6366f1;
+}
+.disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
 .clearBtn {
-  margin-left: auto;
   background: #450a0a;
   color: #fca5a5;
   border: 1px solid #7f1d1d;
   border-radius: 6px;
-  padding: 0.3rem 0.65rem;
-  font-size: 0.78rem;
+  padding: 6px 4px;
+  font-size: 0.68rem;
+  font-weight: 600;
   cursor: pointer;
   transition: all 0.15s;
+  width: 100%;
+  text-align: center;
 }
 .clearBtn:hover {
   background: #7f1d1d;
 }
 
-/* ── Mobile ───────────────────────────────────────────────────────────────── */
-@media (max-width: 640px) {
-  .tools {
-    gap: 0.5rem;
-    padding: 0.5rem;
+/* ── Canvas area ─────────────────────────────────────────────────────── */
+.canvasWrap {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  border-radius: 12px; /* full radius when no toolbar (spectators/guessers) */
+  border: 1px solid #334155;
+}
+/* When toolbar present, left corners join the toolbar */
+.canvasWrapDrawer {
+  border-radius: 0 12px 12px 0;
+  border-left: none;
+}
+
+.canvasMain {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  background: #ffffff;
+}
+.canvasPreview {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  background: transparent;
+}
+
+/* ── Remote cursor ──────────────────────────────────────────────────── */
+.remoteCursor {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+.cursorDot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #6366f1;
+  border: 2px solid white;
+  box-shadow: 0 0 6px rgba(99, 102, 241, 0.7);
+  animation: cursorPulse 1s ease-in-out infinite;
+}
+@keyframes cursorPulse {
+  0%,
+  100% {
+    transform: scale(1);
   }
-  .colorBtn {
-    width: 20px;
-    height: 20px;
+  50% {
+    transform: scale(1.3);
   }
-  .sizeRow input {
-    width: 55px;
+}
+.cursorLabel {
+  background: #6366f1;
+  color: white;
+  font-size: 0.65rem;
+  font-weight: 600;
+  padding: 1px 5px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+/* ── Mobile: toolbar flips to top horizontal strip ──────────────────── */
+@media (max-width: 768px) {
+  .wrapper {
+    flex-direction: column;
+  }
+  .toolbar {
+    width: 100%;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    border-radius: 12px 12px 0 0;
+    border-right: 1px solid #334155;
+    border-bottom: none;
+    padding: 5px 8px;
+    gap: 10px;
+    align-items: flex-start;
+  }
+  .section {
+    border-bottom: none;
+    border-right: 1px solid #1e293b;
+    padding: 0 10px 0 0;
+    flex-shrink: 0;
+  }
+  .section:last-child {
+    border-right: none;
+  }
+  .palette {
+    grid-template-columns: repeat(8, 1fr);
+    min-width: 140px;
+  }
+  .toolGrid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  .canvasWrap {
+    border-radius: 0 0 12px 12px;
+    border-top: none;
+  }
+  .canvasWrapDrawer {
+    border-radius: 0 0 12px 12px;
+    border-left: 1px solid #334155;
   }
 }
