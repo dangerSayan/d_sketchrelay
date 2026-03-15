@@ -1,4 +1,4 @@
-# SketchRelay
+# d_SketchRelay
 
 A real-time multiplayer drawing and guessing game built with the MERN stack and Socket.io. Players join rooms, take turns drawing a secret word while others race to guess it, and compete for the highest score across multiple rounds.
 
