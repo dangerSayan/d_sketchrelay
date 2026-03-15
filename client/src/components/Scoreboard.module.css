@@ -1,3 +1,5 @@
+/* client/src/components/Scoreboard.module.css */
+
 .wrapper {
   background: #1e293b;
   border: 1px solid #334155;
@@ -6,7 +8,7 @@
 }
 
 .title {
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   font-weight: 600;
   color: #475569;
   text-transform: uppercase;
@@ -17,22 +19,34 @@
 .row {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.4rem 0;
-  border-bottom: 1px solid #1e293b;
-  font-size: 0.9rem;
+  gap: 6px;
+  padding: 0.4rem 0.4rem;
+  border-radius: 6px;
+  transition: background 0.15s;
+}
+
+.first {
+  background: rgba(234, 179, 8, 0.08);
+  border: 1px solid rgba(234, 179, 8, 0.2);
 }
 
 .rank {
-  color: #475569;
-  width: 28px;
   font-size: 0.8rem;
+  color: #475569;
+  width: 24px;
+  flex-shrink: 0;
 }
 .name {
   flex: 1;
   color: #e2e8f0;
+  font-size: 0.85rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .score {
   color: #818cf8;
   font-weight: 700;
+  font-size: 0.85rem;
+  flex-shrink: 0;
 }

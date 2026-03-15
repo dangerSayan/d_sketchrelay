@@ -1,8 +1,17 @@
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+// client/src/App.jsx
+import {
+  BrowserRouter,
+  Routes,
+  Route,
+  Navigate,
+  useLocation,
+} from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
-import { GameProvider } from "./context/GameContext"; // ADD
+import { GameProvider } from "./context/GameContext";
 import useAuth from "./hooks/useAuth";
+import Navbar from "./components/Navbar";
 
+import Landing from "./pages/Landing";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Lobby from "./pages/Lobby";
@@ -13,28 +22,43 @@ const ProtectedRoute = ({ children }) => {
   return user ? children : <Navigate to="/login" replace />;
 };
 
+// Show the Navbar on every page EXCEPT the GameRoom, which has its own top bar
+const Layout = ({ children }) => {
+  const location = useLocation();
+  const hideNav = location.pathname.startsWith("/room/");
+  return (
+    <>
+      {!hideNav && <Navbar />}
+      {children}
+    </>
+  );
+};
+
 const AppRoutes = () => (
-  <Routes>
-    <Route path="/login" element={<Login />} />
-    <Route path="/register" element={<Register />} />
-    <Route
-      path="/lobby"
-      element={
-        <ProtectedRoute>
-          <Lobby />
-        </ProtectedRoute>
-      }
-    />
-    <Route
-      path="/room/:code"
-      element={
-        <ProtectedRoute>
-          <GameRoom />
-        </ProtectedRoute>
-      }
-    />
-    <Route path="*" element={<Navigate to="/login" replace />} />
-  </Routes>
+  <Layout>
+    <Routes>
+      <Route path="/" element={<Landing />} />
+      <Route path="/login" element={<Login />} />
+      <Route path="/register" element={<Register />} />
+      <Route
+        path="/lobby"
+        element={
+          <ProtectedRoute>
+            <Lobby />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/room/:code"
+        element={
+          <ProtectedRoute>
+            <GameRoom />
+          </ProtectedRoute>
+        }
+      />
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
+  </Layout>
 );
 
 function App() {
@@ -42,8 +66,6 @@ function App() {
     <BrowserRouter>
       <AuthProvider>
         <GameProvider>
-          {" "}
-          {/* ADD — wraps everything below AuthProvider */}
           <AppRoutes />
         </GameProvider>
       </AuthProvider>

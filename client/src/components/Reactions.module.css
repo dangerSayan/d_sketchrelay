@@ -1,0 +1,85 @@
+/* client/src/components/Reactions.module.css */
+
+.floatingArea {
+  position: fixed;
+  bottom: 120px;
+  right: 280px;
+  pointer-events: none;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-end;
+}
+
+.floatingReaction {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  animation: floatUp 2.5s ease-out forwards;
+  background: rgba(30, 41, 59, 0.85);
+  border: 1px solid #334155;
+  border-radius: 999px;
+  padding: 4px 12px 4px 6px;
+}
+
+@keyframes floatUp {
+  0% {
+    opacity: 0;
+    transform: translateY(0) scale(0.6);
+  }
+  15% {
+    opacity: 1;
+    transform: translateY(-8px) scale(1.1);
+  }
+  80% {
+    opacity: 1;
+    transform: translateY(-40px) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-60px) scale(0.8);
+  }
+}
+
+.emoji {
+  font-size: 22px;
+  line-height: 1;
+}
+
+.reactionName {
+  color: #94a3b8;
+  font-size: 0.75rem;
+}
+
+.buttons {
+  display: flex;
+  gap: 6px;
+}
+
+.btn {
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  padding: 5px 8px;
+  font-size: 18px;
+  cursor: pointer;
+  transition: all 0.12s;
+  line-height: 1;
+}
+
+.btn:hover {
+  background: #334155;
+  transform: scale(1.2);
+}
+
+@media (max-width: 640px) {
+  .floatingArea {
+    right: 12px;
+    bottom: 80px;
+  }
+  .btn {
+    padding: 4px 6px;
+    font-size: 16px;
+  }
+}

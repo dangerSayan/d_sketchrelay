@@ -3,12 +3,23 @@ const Room = require("../models/Room");
 const User = require("../models/User");
 const gameManager = require("./gameManager");
 
+const CHOICE_TIME = 15;
+
 module.exports = (io) => {
   io.on("connection", (socket) => {
     console.log(`Socket connected: ${socket.id}`);
 
     // ═══════════════════════════════════════════════════════════
     // EVENT: join-room
+    //
+    // ROOT CAUSE OF BUG #1 FIXED HERE:
+    // Previously we did Room.updateOne() to set socketId, then Room.findOne()
+    // to get the updated room. But if the player wasn't in the DB yet (first
+    // join race), updateOne matched nothing, and findOne returned stale data.
+    //
+    // Fix: use findOneAndUpdate with upsert-style logic — if the player exists,
+    // update their socketId. If they don't exist in players array, add them.
+    // Then emit the authoritative room state from the DB result.
     // ═══════════════════════════════════════════════════════════
     socket.on("join-room", async ({ roomCode, user }) => {
       try {
@@ -16,32 +27,64 @@ module.exports = (io) => {
         socket.roomCode = roomCode;
         socket.userId = user.id.toString();
         socket.username = user.username;
+        socket.isSpectator = false;
 
-        // Update socketId in MongoDB
-        await Room.updateOne(
-          { code: roomCode, "players.userId": user.id },
-          { $set: { "players.$.socketId": socket.id } },
-        );
-
-        // Sync socketId into live in-memory game state if game is running
-        const activeGame = gameManager.getGame(roomCode);
-        if (activeGame) {
-          const player = activeGame.players.find(
-            (p) => p.userId.toString() === user.id.toString(),
-          );
-          if (player) player.socketId = socket.id;
+        // Check if player is already in the room
+        const room = await Room.findOne({ code: roomCode });
+        if (!room) {
+          return socket.emit("error", { message: "Room not found" });
         }
 
-        const room = await Room.findOne({ code: roomCode });
-        if (!room) return;
+        const alreadyIn = room.players.find(
+          (p) => p.userId.toString() === user.id.toString(),
+        );
 
-        // Broadcast updated player list to everyone in the room
+        if (alreadyIn) {
+          // Update their socketId in place
+          await Room.updateOne(
+            { code: roomCode, "players.userId": user.id },
+            { $set: { "players.$.socketId": socket.id } },
+          );
+        } else if (room.status === "waiting") {
+          // Add player to room (they aren't in it yet)
+          await Room.updateOne(
+            { code: roomCode },
+            {
+              $push: {
+                players: {
+                  userId: user.id,
+                  username: user.username,
+                  socketId: socket.id,
+                  isHost: false,
+                  score: 0,
+                },
+              },
+            },
+          );
+        }
+
+        // Sync socketId into live in-memory game if running
+        const activeGame = gameManager.getGame(roomCode);
+        if (activeGame) {
+          const p = activeGame.players.find(
+            (p) => p.userId.toString() === user.id.toString(),
+          );
+          if (p) p.socketId = socket.id;
+        }
+
+        // Fetch the fresh authoritative room state
+        const freshRoom = await Room.findOne({ code: roomCode });
+        if (!freshRoom) return;
+
+        // Broadcast to EVERYONE in the room including the joiner
+        // so all clients get the exact same updated player list
         io.to(roomCode).emit("player-joined", {
-          players: room.players,
+          players: freshRoom.players,
+          host: freshRoom.host.toString(),
           message: `${user.username} joined the room`,
         });
 
-        // If a game is already in progress (reconnecting), send current state
+        // If game is in progress, send current state to reconnecting player
         if (activeGame) {
           const { guessed, total } = gameManager.getGuessedCount(roomCode);
           socket.emit("game-state-sync", {
@@ -53,11 +96,86 @@ module.exports = (io) => {
             maxRounds: activeGame.settings.rounds,
             guessedCount: guessed,
             totalGuessers: total,
+            choosingWord: activeGame.choosingWord,
           });
         }
       } catch (err) {
         console.error("join-room error:", err);
         socket.emit("error", { message: "Failed to join room" });
+      }
+    });
+
+    // ═══════════════════════════════════════════════════════════
+    // EVENT: join-as-spectator
+    // ═══════════════════════════════════════════════════════════
+    socket.on("join-as-spectator", async ({ roomCode, user }) => {
+      try {
+        socket.join(roomCode);
+        socket.roomCode = roomCode;
+        socket.userId = user.id.toString();
+        socket.username = user.username;
+        socket.isSpectator = true;
+
+        const room = await Room.findOne({ code: roomCode });
+        if (!room) return socket.emit("error", { message: "Room not found" });
+
+        const alreadyIn = room.players.find(
+          (p) => p.userId.toString() === user.id.toString(),
+        );
+        if (!alreadyIn) {
+          await Room.updateOne(
+            { code: roomCode },
+            {
+              $push: {
+                players: {
+                  userId: user.id,
+                  username: user.username,
+                  isSpectator: true,
+                  socketId: socket.id,
+                  score: 0,
+                },
+              },
+            },
+          );
+        } else {
+          await Room.updateOne(
+            { code: roomCode, "players.userId": user.id },
+            { $set: { "players.$.socketId": socket.id } },
+          );
+        }
+
+        const activeGame = gameManager.getGame(roomCode);
+        if (activeGame) {
+          gameManager.addSpectator(roomCode, {
+            userId: user.id.toString(),
+            username: user.username,
+            socketId: socket.id,
+          });
+        }
+
+        const freshRoom = await Room.findOne({ code: roomCode });
+        io.to(roomCode).emit("spectator-joined", {
+          players: freshRoom.players,
+          host: freshRoom.host.toString(),
+          message: `${user.username} joined as spectator`,
+        });
+
+        if (activeGame) {
+          const { guessed, total } = gameManager.getGuessedCount(roomCode);
+          socket.emit("game-state-sync", {
+            currentDrawer: gameManager.getCurrentDrawer(roomCode),
+            wordHint: activeGame.currentHint,
+            timeLeft: activeGame.timeLeft,
+            scores: gameManager.getScoreboard(roomCode),
+            round: activeGame.currentRound,
+            maxRounds: activeGame.settings.rounds,
+            guessedCount: guessed,
+            totalGuessers: total,
+            isSpectator: true,
+          });
+        }
+      } catch (err) {
+        console.error("join-as-spectator error:", err);
       }
     });
 
@@ -74,7 +192,9 @@ module.exports = (io) => {
             message: "Only the host can start the game",
           });
         }
-        if (room.players.length < 2) {
+
+        const activePlayers = room.players.filter((p) => !p.isSpectator);
+        if (activePlayers.length < 2) {
           return socket.emit("error", {
             message: "Need at least 2 players to start",
           });
@@ -90,12 +210,15 @@ module.exports = (io) => {
           rounds: room.rounds,
           drawTime: room.drawTime,
           maxPlayers: room.maxPlayers,
+          category: room.category || "all",
+          customWords: room.customWords || [],
         });
 
         io.to(roomCode).emit("game-started", {
           message: "Game is starting!",
           players: game.players,
           rounds: game.settings.rounds,
+          host: room.host.toString(),
         });
 
         setTimeout(() => startNewTurn(io, roomCode), 3000);
@@ -103,6 +226,17 @@ module.exports = (io) => {
         console.error("start-game error:", err);
         socket.emit("error", { message: "Failed to start game" });
       }
+    });
+
+    // ═══════════════════════════════════════════════════════════
+    // EVENT: pick-word
+    // ═══════════════════════════════════════════════════════════
+    socket.on("pick-word", ({ roomCode, word }) => {
+      const game = gameManager.getGame(roomCode);
+      if (!game || !game.choosingWord) return;
+      const drawer = gameManager.getCurrentDrawer(roomCode);
+      if (!drawer || drawer.socketId !== socket.id) return;
+      beginTurn(io, roomCode, word);
     });
 
     // ═══════════════════════════════════════════════════════════
@@ -131,8 +265,9 @@ module.exports = (io) => {
     // EVENT: send-guess
     // ═══════════════════════════════════════════════════════════
     socket.on("send-guess", ({ roomCode, guess, userId }) => {
+      if (socket.isSpectator) return;
       const game = gameManager.getGame(roomCode);
-      if (!game || game.status !== "playing") return;
+      if (!game || game.status !== "playing" || game.choosingWord) return;
 
       const result = gameManager.processGuess(
         roomCode,
@@ -153,96 +288,115 @@ module.exports = (io) => {
         });
         if (result.allGuessed) endTurn(io, roomCode);
       } else {
-        // Show the wrong guess as plain chat to everyone
         io.to(roomCode).emit("chat-message", {
           username: result.player.username,
           message: guess,
           type: "guess",
         });
 
-        // If a single letter was silently revealed in the hint, broadcast the update
-        if (result.hintUpdated) {
-          io.to(roomCode).emit("hint-update", { wordHint: result.updatedHint });
-        }
-
-        // Private "close" hint — ONLY to the guesser, not the drawer
-        if (result.isClose) {
+        if (result.closeLevel > 0) {
+          const msg =
+            result.closeLevel === 3
+              ? `"${guess}" is close!`
+              : result.closeLevel === 2
+                ? `"${guess}" is very close!`
+                : `"${guess}" is extremely close!`;
           io.to(socket.id).emit("close-guess", {
-            message: `"${guess}" is very close!`,
+            message: msg,
+            level: result.closeLevel,
           });
         }
       }
     });
 
     // ═══════════════════════════════════════════════════════════
+    // EVENT: react
+    // ═══════════════════════════════════════════════════════════
+    socket.on("react", ({ roomCode, emoji }) => {
+      const allowed = ["🔥", "😂", "👏", "😮"];
+      if (!allowed.includes(emoji)) return;
+      io.to(roomCode).emit("reaction", { username: socket.username, emoji });
+    });
+
+    // ═══════════════════════════════════════════════════════════
     // EVENT: disconnect
-    // FIX: properly update player list on disconnect and handle host leaving
+    //
+    // BUG FIX: use socketId for $pull instead of userId to avoid
+    // ObjectId vs string cast mismatch that silently failed before
     // ═══════════════════════════════════════════════════════════
     socket.on("disconnect", async () => {
       console.log(`Socket disconnected: ${socket.id}`);
       if (!socket.roomCode || !socket.userId) return;
 
       try {
-        const { roomCode, userId, username } = socket;
+        const { roomCode, userId, username, isSpectator } = socket;
 
-        // Remove player from MongoDB
+        // Pull by socketId — always a plain string, never a cast issue
         await Room.updateOne(
           { code: roomCode },
-          { $pull: { players: { userId } } },
+          { $pull: { players: { socketId: socket.id } } },
         );
 
         const room = await Room.findOne({ code: roomCode });
 
-        // Room is now empty — clean it up entirely
-        if (!room || room.players.length === 0) {
+        // Room is empty — delete it entirely
+        if (!room || room.players.filter((p) => !p.isSpectator).length === 0) {
           if (room) await Room.deleteOne({ code: roomCode });
           gameManager.deleteGame(roomCode);
           return;
         }
 
-        // FIX: always broadcast the updated players array, not just a message.
-        // This is what was missing — the waiting room never updated visually.
         io.to(roomCode).emit("player-left", {
           username,
-          players: room.players, // send full updated list
+          players: room.players,
+          host: room.host.toString(),
+          isSpectator,
         });
 
-        // FIX: if the host left and the game hasn't started, transfer host
-        // to the next player so the room can still be started
+        // Transfer host if host left during waiting
         if (
+          !isSpectator &&
           room.host.toString() === userId.toString() &&
           room.status === "waiting"
         ) {
-          const newHost = room.players[0];
-          await Room.updateOne(
-            { code: roomCode },
-            {
-              $set: {
-                host: newHost.userId,
-                "players.0.isHost": true,
+          const newHost =
+            room.players.find((p) => !p.isSpectator) || room.players[0];
+          if (newHost) {
+            await Room.updateOne(
+              { code: roomCode },
+              {
+                $set: {
+                  host: newHost.userId,
+                  "players.$[el].isHost": true,
+                },
               },
-            },
-          );
-          const updatedRoom = await Room.findOne({ code: roomCode });
-          io.to(roomCode).emit("host-changed", {
-            newHostId: newHost.userId.toString(),
-            newHostUsername: newHost.username,
-            players: updatedRoom.players,
-          });
+              { arrayFilters: [{ "el.userId": newHost.userId }] },
+            );
+            const updatedRoom = await Room.findOne({ code: roomCode });
+            io.to(roomCode).emit("host-changed", {
+              newHostId: newHost.userId.toString(),
+              newHostUsername: newHost.username,
+              players: updatedRoom.players,
+              host: newHost.userId.toString(),
+            });
+          }
         }
 
         // Handle in-progress game
         const game = gameManager.getGame(roomCode);
         if (game) {
-          gameManager.removePlayer(roomCode, userId);
-
-          if (game.players.length < 2) {
-            gameManager.deleteGame(roomCode);
-            await Room.updateOne({ code: roomCode }, { status: "finished" });
-            io.to(roomCode).emit("game-over", {
-              reason: "Not enough players",
-              finalScores: [],
-            });
+          if (isSpectator) {
+            gameManager.removeSpectator(roomCode, userId);
+          } else {
+            gameManager.removePlayer(roomCode, userId);
+            if (game.players.length < 2) {
+              gameManager.deleteGame(roomCode);
+              await Room.updateOne({ code: roomCode }, { status: "finished" });
+              io.to(roomCode).emit("game-over", {
+                reason: "Not enough players",
+                finalScores: [],
+              });
+            }
           }
         }
       } catch (err) {
@@ -252,17 +406,52 @@ module.exports = (io) => {
   });
 };
 
-// ═══════════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
 // HELPER: startNewTurn
-// ═══════════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
 function startNewTurn(io, roomCode) {
-  const game = gameManager.startTurn(roomCode);
+  const result = gameManager.prepareTurn(roomCode);
+  if (!result) return;
+
+  const { game, choices } = result;
+  const drawer = gameManager.getCurrentDrawer(roomCode);
+
+  io.to(roomCode).emit("choosing-word", {
+    drawer: { id: drawer.userId, username: drawer.username },
+    choiceTime: CHOICE_TIME,
+    round: game.currentRound,
+    maxRounds: game.settings.rounds,
+  });
+
+  if (drawer.socketId) {
+    io.to(drawer.socketId).emit("word-choices", {
+      choices,
+      choiceTime: CHOICE_TIME,
+    });
+  } else {
+    console.warn(`Drawer ${drawer.username} has no socketId — auto-picking`);
+    beginTurn(io, roomCode, choices[0]);
+    return;
+  }
+
+  game.choiceTimer = setTimeout(() => {
+    const g = gameManager.getGame(roomCode);
+    if (g && g.choosingWord) beginTurn(io, roomCode, choices[0]);
+  }, CHOICE_TIME * 1000);
+}
+
+// ═══════════════════════════════════════════════════════════
+// HELPER: beginTurn
+// ═══════════════════════════════════════════════════════════
+function beginTurn(io, roomCode, chosenWord) {
+  const game = gameManager.pickWord(roomCode, chosenWord);
   if (!game) return;
 
   const drawer = gameManager.getCurrentDrawer(roomCode);
-  console.log(
-    `New turn — drawer: ${drawer.username} | word: ${game.currentWord}`,
-  );
+
+  // BUG FIX #4: explicitly clear canvas BEFORE broadcasting new-turn
+  // so no stale stroke from the previous turn bleeds through
+  io.to(roomCode).emit("canvas-cleared");
 
   io.to(roomCode).emit("new-turn", {
     drawer: { id: drawer.userId, username: drawer.username },
@@ -276,18 +465,11 @@ function startNewTurn(io, roomCode) {
 
   if (drawer.socketId) {
     io.to(drawer.socketId).emit("your-word", { word: game.currentWord });
-  } else {
-    console.warn(
-      `WARNING: drawer ${drawer.username} has no socketId — your-word not sent`,
-    );
   }
 
   const onReveal = (newHint) => {
     io.to(roomCode).emit("hint-update", { wordHint: newHint });
   };
-
-  // Store callback so the pending-reveal timer (triggered by correct-position guesses)
-  // can also call it without needing the io reference directly
   gameManager.storeRevealCallback(roomCode, onReveal);
 
   gameManager.setTurnTimer(
@@ -302,9 +484,9 @@ function startNewTurn(io, roomCode) {
   );
 }
 
-// ═══════════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
 // HELPER: endTurn
-// ═══════════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
 function endTurn(io, roomCode) {
   const game = gameManager.getGame(roomCode);
   if (!game) return;
@@ -322,6 +504,8 @@ function endTurn(io, roomCode) {
     word: game.currentWord,
     scores: gameManager.getScoreboard(roomCode),
   });
+
+  // Clear canvas at end of turn too
   io.to(roomCode).emit("canvas-cleared");
 
   const { gameOver, players } = gameManager.advanceTurn(roomCode);
@@ -337,9 +521,6 @@ function endTurn(io, roomCode) {
   }
 }
 
-// ═══════════════════════════════════════════════════════════════════
-// HELPER: saveFinalScores
-// ═══════════════════════════════════════════════════════════════════
 async function saveFinalScores(roomCode, players) {
   try {
     await Room.updateOne({ code: roomCode }, { status: "finished" });

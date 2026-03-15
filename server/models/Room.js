@@ -1,10 +1,6 @@
 // server/models/Room.js
 const mongoose = require("mongoose");
 
-// Sub-schema for a player inside a room.
-// Instead of storing just user IDs, we store a snapshot of the player's
-// info. This way, even if the user updates their username, the room
-// still shows the name they had when they joined.
 const playerSchema = new mongoose.Schema(
   {
     userId: {
@@ -14,40 +10,31 @@ const playerSchema = new mongoose.Schema(
     },
     username: { type: String, required: true },
     score: { type: Number, default: 0 },
-    socketId: { type: String, default: "" }, // we'll fill this during socket connection
+    socketId: { type: String, default: "" },
     isHost: { type: Boolean, default: false },
+    isSpectator: { type: Boolean, default: false }, // NEW: spectator flag
   },
   { _id: false },
-); // _id: false means MongoDB won't give each player their own _id
+);
 
 const roomSchema = new mongoose.Schema(
   {
-    code: {
-      type: String,
-      required: true,
-      unique: true,
-      uppercase: true, // always store as uppercase e.g. "XKCD42"
-    },
-    host: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-      required: true,
-    },
-    players: [playerSchema], // array of player sub-documents
-
-    // Room settings (host can configure these)
+    code: { type: String, required: true, unique: true, uppercase: true },
+    host: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+    players: [playerSchema],
     maxPlayers: { type: Number, default: 8, min: 2, max: 12 },
     rounds: { type: Number, default: 3, min: 1, max: 5 },
-    drawTime: { type: Number, default: 80, min: 30, max: 180 }, // seconds per turn
-
-    // Game state
+    drawTime: { type: Number, default: 80, min: 30, max: 180 },
     status: {
       type: String,
-      enum: ["waiting", "playing", "finished"], // only these three values allowed
+      enum: ["waiting", "playing", "finished"],
       default: "waiting",
     },
-
     isPrivate: { type: Boolean, default: false },
+    // NEW: word category ('all' | 'animals' | 'food' | 'objects' | 'actions' | 'places' | 'movies')
+    category: { type: String, default: "all" },
+    // NEW: custom words typed by the host (stored as array, max 50)
+    customWords: { type: [String], default: [] },
   },
   { timestamps: true },
 );

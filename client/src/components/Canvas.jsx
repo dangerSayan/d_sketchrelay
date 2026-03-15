@@ -6,26 +6,65 @@ import styles from "./Canvas.module.css";
 
 const Canvas = ({ roomCode, isDrawer }) => {
   const canvasRef = useRef(null);
-  const isDrawing = useRef(false); // useRef not useState — no re-render needed
+  const isDrawing = useRef(false);
   const lastPos = useRef({ x: 0, y: 0 });
   const colorRef = useRef("#ffffff");
   const sizeRef = useRef(6);
+  const ctxRef = useRef(null); // stable ref to the canvas context
 
-  const { gameState, dispatch } = useContext(GameContext);
+  const { gameState } = useContext(GameContext);
 
-  // ── Helper: get mouse position relative to canvas ──────────────────────
+  // ── One-time setup: get context, fill background, wire socket listeners ──
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext("2d");
+    ctxRef.current = ctx;
+
+    ctx.fillStyle = "#1a1a2e";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    const handleDraw = (stroke) => drawStroke(ctx, stroke);
+
+    socket.on("draw-broadcast", handleDraw);
+
+    return () => {
+      socket.off("draw-broadcast", handleDraw);
+    };
+  }, []);
+
+  // ── BUG FIX #4: watch canvasClearCount from GameContext ──────────────────
+  // Previously Canvas cleared itself by listening to 'canvas-cleared' directly
+  // on the socket inside a useEffect. But that useEffect also depended on
+  // `isDrawer` which caused the listener to re-register, sometimes missing
+  // the clear event or firing twice.
+  //
+  // Now the canonical flow is:
+  //   socket event → useSocket dispatch CANVAS_CLEARED
+  //   → GameContext increments canvasClearCount
+  //   → this useEffect detects the change and wipes the canvas
+  //
+  // This is reliable regardless of isDrawer changes or effect re-runs.
+  useEffect(() => {
+    if (!gameState.canvasClearCount) return; // 0 or undefined = initial state
+    const canvas = canvasRef.current;
+    const ctx = ctxRef.current;
+    if (!canvas || !ctx) return;
+    ctx.fillStyle = "#1a1a2e";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  }, [gameState.canvasClearCount]);
+
   const getPos = (e) => {
-    const rect = canvasRef.current.getBoundingClientRect();
-    // scaleX/scaleY handles cases where canvas CSS size != actual pixel size
-    const scaleX = canvasRef.current.width / rect.width;
-    const scaleY = canvasRef.current.height / rect.height;
+    const canvas = canvasRef.current;
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const source = e.touches ? e.touches[0] : e;
     return {
-      x: (e.clientX - rect.left) * scaleX,
-      y: (e.clientY - rect.top) * scaleY,
+      x: (source.clientX - rect.left) * scaleX,
+      y: (source.clientY - rect.top) * scaleY,
     };
   };
 
-  // ── Helper: draw a single stroke segment on the canvas ─────────────────
   const drawStroke = (ctx, { x0, y0, x1, y1, color, size }) => {
     ctx.beginPath();
     ctx.strokeStyle = color;
@@ -37,56 +76,21 @@ const Canvas = ({ roomCode, isDrawer }) => {
     ctx.stroke();
   };
 
-  // ── Listen for canvas-cleared from GameContext ──────────────────────────
-  // When the server emits canvas-cleared, GameContext dispatches CANVAS_CLEARED.
-  // We watch for that here and wipe the canvas.
-  // We use a ref to track the last known "cleared" count.
-  const clearedCount = useRef(0);
-  useEffect(() => {
-    // We increment a counter in GameContext when canvas-cleared fires.
-    // Check canvas cleared via a dedicated effect
-  }, [gameState]);
-
-  // ── Listen for draw-broadcast ───────────────────────────────────────────
+  // ── Mouse + Touch event listeners ────────────────────────────────────────
   useEffect(() => {
     const canvas = canvasRef.current;
-    const ctx = canvas.getContext("2d");
+    const ctx = ctxRef.current;
 
-    // Fill with a dark background on mount
-    ctx.fillStyle = "#1a1a2e";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    const handleDrawBroadcast = (stroke) => {
-      drawStroke(ctx, stroke);
-    };
-
-    const handleCanvasCleared = () => {
-      ctx.fillStyle = "#1a1a2e";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-    };
-
-    socket.on("draw-broadcast", handleDrawBroadcast);
-    socket.on("canvas-cleared", handleCanvasCleared);
-
-    return () => {
-      socket.off("draw-broadcast", handleDrawBroadcast);
-      socket.off("canvas-cleared", handleCanvasCleared);
-    };
-  }, []);
-
-  // ── Mouse event handlers (only active for the drawer) ──────────────────
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext("2d");
-
-    const onMouseDown = (e) => {
+    const startDrawing = (e) => {
       if (!isDrawer) return;
+      if (e.cancelable) e.preventDefault();
       isDrawing.current = true;
       lastPos.current = getPos(e);
     };
 
-    const onMouseMove = (e) => {
+    const draw = (e) => {
       if (!isDrawer || !isDrawing.current) return;
+      if (e.cancelable) e.preventDefault();
       const pos = getPos(e);
       const stroke = {
         x0: lastPos.current.x,
@@ -96,39 +100,37 @@ const Canvas = ({ roomCode, isDrawer }) => {
         color: colorRef.current,
         size: sizeRef.current,
       };
-
-      // Draw locally immediately (no waiting for server round-trip)
       drawStroke(ctx, stroke);
-
-      // Send to server, which broadcasts to all other players
       socket.emit("draw", { roomCode, stroke });
-
       lastPos.current = pos;
     };
 
-    const onMouseUp = () => {
-      isDrawing.current = false;
-    };
-    const onMouseLeave = () => {
+    const stopDrawing = () => {
       isDrawing.current = false;
     };
 
-    canvas.addEventListener("mousedown", onMouseDown);
-    canvas.addEventListener("mousemove", onMouseMove);
-    canvas.addEventListener("mouseup", onMouseUp);
-    canvas.addEventListener("mouseleave", onMouseLeave);
+    canvas.addEventListener("mousedown", startDrawing);
+    canvas.addEventListener("mousemove", draw);
+    canvas.addEventListener("mouseup", stopDrawing);
+    canvas.addEventListener("mouseleave", stopDrawing);
+    canvas.addEventListener("touchstart", startDrawing, { passive: false });
+    canvas.addEventListener("touchmove", draw, { passive: false });
+    canvas.addEventListener("touchend", stopDrawing);
+    canvas.addEventListener("touchcancel", stopDrawing);
 
     return () => {
-      canvas.removeEventListener("mousedown", onMouseDown);
-      canvas.removeEventListener("mousemove", onMouseMove);
-      canvas.removeEventListener("mouseup", onMouseUp);
-      canvas.removeEventListener("mouseleave", onMouseLeave);
+      canvas.removeEventListener("mousedown", startDrawing);
+      canvas.removeEventListener("mousemove", draw);
+      canvas.removeEventListener("mouseup", stopDrawing);
+      canvas.removeEventListener("mouseleave", stopDrawing);
+      canvas.removeEventListener("touchstart", startDrawing);
+      canvas.removeEventListener("touchmove", draw);
+      canvas.removeEventListener("touchend", stopDrawing);
+      canvas.removeEventListener("touchcancel", stopDrawing);
     };
   }, [isDrawer, roomCode]);
 
-  const handleClear = () => {
-    socket.emit("clear-canvas", { roomCode });
-  };
+  const handleClear = () => socket.emit("clear-canvas", { roomCode });
 
   return (
     <div className={styles.wrapper}>
@@ -137,10 +139,11 @@ const Canvas = ({ roomCode, isDrawer }) => {
         width={800}
         height={500}
         className={styles.canvas}
-        style={{ cursor: isDrawer ? "crosshair" : "default" }}
+        style={{
+          cursor: isDrawer ? "crosshair" : "default",
+          touchAction: isDrawer ? "none" : "auto",
+        }}
       />
-
-      {/* Drawing tools — only visible to the drawer */}
       {isDrawer && (
         <div className={styles.tools}>
           <div className={styles.colors}>
@@ -155,6 +158,10 @@ const Canvas = ({ roomCode, isDrawer }) => {
               "#ec4899",
               "#000000",
               "#6b7280",
+              "#a16207",
+              "#0e7490",
+              "#be185d",
+              "#15803d",
             ].map((c) => (
               <button
                 key={c}
@@ -167,9 +174,8 @@ const Canvas = ({ roomCode, isDrawer }) => {
               />
             ))}
           </div>
-
           <div className={styles.sizeRow}>
-            <label>Size</label>
+            <span className={styles.sizeLabel}>Size</span>
             <input
               type="range"
               min="2"
@@ -180,9 +186,8 @@ const Canvas = ({ roomCode, isDrawer }) => {
               }}
             />
           </div>
-
           <button onClick={handleClear} className={styles.clearBtn}>
-            Clear canvas
+            Clear
           </button>
         </div>
       )}

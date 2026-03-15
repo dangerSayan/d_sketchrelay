@@ -1,6 +1,6 @@
 // client/src/pages/GameRoom.jsx
-import { useContext, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useContext, useEffect, useRef } from "react";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { GameContext } from "../context/GameContext";
 import useAuth from "../hooks/useAuth";
 import useSocket from "../hooks/useSocket";
@@ -12,6 +12,11 @@ import Chat from "../components/Chat";
 import Scoreboard from "../components/Scoreboard";
 import Timer from "../components/Timer";
 import PlayerList from "../components/PlayerList";
+import WordChoiceScreen from "../components/WordChoiceScreen";
+import Reactions from "../components/Reactions";
+import MuteButton from "../components/MuteButton";
+import Confetti from "../components/Confetti";
+import Avatar from "../components/Avatar";
 
 import styles from "./GameRoom.module.css";
 
@@ -20,57 +25,105 @@ const GameRoom = () => {
   const { user } = useAuth();
   const { gameState, dispatch } = useContext(GameContext);
   const navigate = useNavigate();
+  const location = useLocation();
+  const spectatorEmitted = useRef(false);
+
+  const joinAsSpectator = location.state?.spectate === true;
 
   useSocket(code, user);
 
   useEffect(() => {
+    if (!code) return;
     roomAPI
       .getOne(code)
       .then((res) => dispatch({ type: "SET_ROOM", payload: res.data.room }))
       .catch(() => navigate("/lobby"));
   }, [code]);
 
-  const isHost = gameState.room?.host?.toString() === user?._id?.toString();
+  useEffect(() => {
+    if (!joinAsSpectator || !user || spectatorEmitted.current) return;
+    const emit = () => {
+      if (spectatorEmitted.current) return;
+      spectatorEmitted.current = true;
+      socket.emit("join-as-spectator", {
+        roomCode: code,
+        user: { id: user._id, username: user.username },
+      });
+    };
+    if (socket.connected) emit();
+    else socket.once("connect", emit);
+    return () => socket.off("connect", emit);
+  }, [joinAsSpectator, user, code]);
+
+  const hostId = gameState.room?.host?.toString();
+  const isHost = !!hostId && hostId === user?._id?.toString();
   const isDrawer =
     gameState.currentDrawer?.id?.toString() === user?._id?.toString();
-  const hostId = gameState.room?.host?.toString();
+  const isSpectator = gameState.isSpectator;
 
-  const handleStartGame = () => {
-    socket.emit("start-game", { roomCode: code });
+  const handleStartGame = () => socket.emit("start-game", { roomCode: code });
+
+  const handleLeaveRoom = () => {
+    dispatch({ type: "RESET" });
+    navigate("/lobby");
   };
 
-  // ── GAME OVER SCREEN ──────────────────────────────────────────────────────
+  const handleGoHome = () => {
+    dispatch({ type: "RESET" });
+    navigate("/");
+  };
+
+  // ── GAME OVER ─────────────────────────────────────────────────────────────
   if (gameState.status === "finished") {
     const sorted = [...gameState.scores].sort((a, b) => b.score - a.score);
     const winner = sorted[0];
+
     return (
-      <div className={styles.page}>
+      <div className={styles.pageScroll}>
         <div className={styles.gameOverCard}>
+          <Confetti />
+          <div className={styles.crownWrap}>
+            <span className={styles.crown}>👑</span>
+          </div>
           <h1 className={styles.gameOverTitle}>Game Over!</h1>
           {winner && (
-            <p className={styles.winner}>
-              Winner: <strong>{winner.username}</strong> — {winner.score} pts
-            </p>
+            <div className={styles.winnerBlock}>
+              <Avatar username={winner.username} size={52} />
+              <div>
+                <div className={styles.winnerName}>{winner.username}</div>
+                <div className={styles.winnerScore}>{winner.score} pts</div>
+              </div>
+            </div>
           )}
           <div className={styles.finalScores}>
             {sorted.map((p, i) => (
-              <div key={p.userId} className={styles.finalRow}>
-                <span>
-                  #{i + 1} {p.username}
+              <div
+                key={p.userId}
+                className={`${styles.finalRow} ${i === 0 ? styles.firstPlace : ""}`}
+              >
+                <span className={styles.finalRank}>
+                  {i === 0
+                    ? "🥇"
+                    : i === 1
+                      ? "🥈"
+                      : i === 2
+                        ? "🥉"
+                        : `#${i + 1}`}
                 </span>
-                <span>{p.score} pts</span>
+                <Avatar username={p.username} size={26} />
+                <span className={styles.finalName}>{p.username}</span>
+                <span className={styles.finalPts}>{p.score} pts</span>
               </div>
             ))}
           </div>
-          <button
-            className={styles.lobbyBtn}
-            onClick={() => {
-              dispatch({ type: "RESET" });
-              navigate("/lobby");
-            }}
-          >
-            Back to lobby
-          </button>
+          <div className={styles.gameOverActions}>
+            <button className={styles.lobbyBtn} onClick={handleLeaveRoom}>
+              Back to lobby
+            </button>
+            <button className={styles.homeBtn} onClick={handleGoHome}>
+              Home
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -78,68 +131,102 @@ const GameRoom = () => {
 
   // ── WAITING ROOM ──────────────────────────────────────────────────────────
   if (gameState.status === "waiting") {
+    const activePlayers = gameState.players.filter((p) => !p.isSpectator);
+
     return (
-      <div className={styles.page}>
+      <div className={styles.pageScroll}>
         <div className={styles.waitingCard}>
-          <h1 className={styles.waitingTitle}>
-            Room <span className={styles.code}>{code}</span>
-          </h1>
+          <div className={styles.waitingTop}>
+            <h1 className={styles.waitingTitle}>
+              Room <span className={styles.code}>{code}</span>
+            </h1>
+            <MuteButton />
+          </div>
           <p className={styles.waitingHint}>Share this code with friends</p>
+
           <PlayerList hostId={hostId} />
+
           <div className={styles.waitingActions}>
             {isHost ? (
               <>
                 <p className={styles.hostNote}>
-                  {gameState.players.length < 2
+                  {activePlayers.length < 2
                     ? "Waiting for at least 1 more player..."
-                    : "Ready to start!"}
+                    : `${activePlayers.length} players ready — let's go!`}
                 </p>
                 <button
                   className={styles.startBtn}
                   onClick={handleStartGame}
-                  disabled={gameState.players.length < 2}
+                  disabled={activePlayers.length < 2}
                 >
                   Start game
                 </button>
               </>
             ) : (
               <p className={styles.hostNote}>
-                Waiting for the host to start the game...
+                {isSpectator
+                  ? "You are watching as a spectator"
+                  : "Waiting for the host to start..."}
               </p>
             )}
           </div>
-          <button
-            className={styles.leaveBtn}
-            onClick={() => navigate("/lobby")}
-          >
-            Leave room
-          </button>
+
+          <div className={styles.waitingFooter}>
+            <button className={styles.leaveBtn} onClick={handleLeaveRoom}>
+              ← Leave room
+            </button>
+            <button className={styles.homeBtn2} onClick={handleGoHome}>
+              🏠 Home
+            </button>
+          </div>
         </div>
       </div>
     );
   }
 
-  // ── PLAYING SCREEN ────────────────────────────────────────────────────────
+  // ── PLAYING / CHOOSING ────────────────────────────────────────────────────
   return (
     <div className={styles.page}>
-      {/* Top bar */}
+      {/* Top bar — room nav + word hint + timer */}
       <header className={styles.topBar}>
-        {/* Left: round info + guessed counter */}
         <div className={styles.topLeft}>
+          {/* Leave / Home buttons */}
+          <button
+            className={styles.navBtn}
+            onClick={handleLeaveRoom}
+            title="Leave room"
+          >
+            ← Lobby
+          </button>
+          <button
+            className={styles.navBtnHome}
+            onClick={handleGoHome}
+            title="Go home"
+          >
+            🏠
+          </button>
+          <span className={styles.divider} />
           <span className={styles.roundInfo}>
             Round {gameState.round}/{gameState.maxRounds}
           </span>
-          {/* Guessed counter — only meaningful during a live turn */}
           {gameState.totalGuessers > 0 && (
             <span className={styles.guessedBadge}>
               {gameState.guessedCount}/{gameState.totalGuessers} guessed
             </span>
           )}
+          {isSpectator && (
+            <span className={styles.spectatorBadge}>watching</span>
+          )}
         </div>
 
-        {/* Centre: word hint or drawer's word */}
         <div className={styles.wordArea}>
-          {isDrawer && gameState.yourWord ? (
+          {gameState.status === "choosing" ? (
+            <span className={styles.choosingText}>
+              {isDrawer
+                ? "Pick your word..."
+                : `${gameState.currentDrawer?.username} is choosing...`}
+            </span>
+          ) : isDrawer && gameState.yourWord ? (
             <span className={styles.yourWord}>
               Draw: <strong>{gameState.yourWord}</strong>
             </span>
@@ -148,18 +235,18 @@ const GameRoom = () => {
           )}
         </div>
 
-        {/* Right: timer */}
-        <Timer />
+        <div className={styles.topRight}>
+          <Timer />
+          <MuteButton />
+        </div>
       </header>
 
-      {/* Turn ended banner */}
       {gameState.turnWord && (
         <div className={styles.turnEndBanner}>
           The word was: <strong>{gameState.turnWord}</strong>
         </div>
       )}
 
-      {/* Main layout */}
       <div className={styles.layout}>
         <div className={styles.sidebar}>
           <PlayerList hostId={hostId} />
@@ -167,11 +254,22 @@ const GameRoom = () => {
         </div>
 
         <div className={styles.canvasArea}>
-          <Canvas roomCode={code} isDrawer={isDrawer} />
+          {gameState.status === "choosing" && (
+            <WordChoiceScreen roomCode={code} isDrawer={isDrawer} />
+          )}
+          <Canvas
+            roomCode={code}
+            isDrawer={isDrawer && gameState.status === "playing"}
+          />
+          {!isSpectator && (
+            <div className={styles.reactionsRow}>
+              <Reactions roomCode={code} />
+            </div>
+          )}
         </div>
 
         <div className={styles.chatArea}>
-          <Chat roomCode={code} isDrawer={isDrawer} />
+          <Chat roomCode={code} isDrawer={isDrawer} isSpectator={isSpectator} />
         </div>
       </div>
     </div>

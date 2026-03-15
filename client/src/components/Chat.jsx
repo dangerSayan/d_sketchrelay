@@ -5,53 +5,61 @@ import useAuth from "../hooks/useAuth";
 import socket from "../socket/socket";
 import styles from "./Chat.module.css";
 
-const Chat = ({ roomCode, isDrawer }) => {
+const Chat = ({ roomCode, isDrawer, isSpectator }) => {
   const { gameState } = useContext(GameContext);
   const { user } = useAuth();
   const [input, setInput] = useState("");
   const feedRef = useRef(null);
   const bottomRef = useRef(null);
-  const userScrolled = useRef(false);
+  const userScrolledUp = useRef(false);
 
   const handleScroll = () => {
     if (!feedRef.current) return;
     const { scrollTop, scrollHeight, clientHeight } = feedRef.current;
-    userScrolled.current = scrollHeight - scrollTop - clientHeight > 60;
+    userScrolledUp.current = scrollHeight - scrollTop - clientHeight > 60;
   };
 
+  // Auto-scroll to bottom unless user manually scrolled up
   useEffect(() => {
-    if (!userScrolled.current) {
+    if (!userScrolledUp.current) {
       bottomRef.current?.scrollIntoView({ behavior: "smooth" });
     }
   }, [gameState.messages]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!input.trim() || isDrawer) return;
+    if (!input.trim() || isDrawer || isSpectator) return;
     socket.emit("send-guess", {
       roomCode,
       guess: input.trim(),
       userId: user._id,
     });
     setInput("");
-    userScrolled.current = false;
+    userScrolledUp.current = false;
   };
 
-  const getMessageClass = (type) => {
+  const getClass = (type, closeLevel) => {
     if (type === "correct") return styles.msgCorrect;
     if (type === "reveal") return styles.msgReveal;
     if (type === "system") return styles.msgSystem;
-    if (type === "close") return styles.msgClose;
+    if (type === "close") {
+      if (closeLevel === 1) return styles.msgExtremelyClose;
+      if (closeLevel === 2) return styles.msgVeryClose;
+      return styles.msgClose;
+    }
     return styles.msgGuess;
   };
 
+  const inputDisabled = isDrawer || isSpectator;
+
   return (
     <div className={styles.wrapper}>
+      {/* Scrollable message feed — fixed height via CSS */}
       <div className={styles.feed} ref={feedRef} onScroll={handleScroll}>
         {gameState.messages.map((msg) => (
           <div
             key={msg.id}
-            className={`${styles.msg} ${getMessageClass(msg.type)} ${msg.type === "correct" ? styles.flash : ""}`}
+            className={`${styles.msg} ${getClass(msg.type, msg.closeLevel)} ${msg.type === "correct" ? styles.flash : ""}`}
           >
             {msg.sender && (
               <span className={styles.sender}>{msg.sender}: </span>
@@ -68,17 +76,23 @@ const Chat = ({ roomCode, isDrawer }) => {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           placeholder={
-            isDrawer
-              ? "You are drawing — no guessing!"
-              : gameState.status === "playing"
-                ? "Type your guess..."
-                : "Chat..."
+            isSpectator
+              ? "Spectators cannot guess"
+              : isDrawer
+                ? "You are drawing..."
+                : gameState.status === "playing"
+                  ? "Type your guess..."
+                  : "Chat..."
           }
           className={styles.input}
           autoComplete="off"
-          disabled={isDrawer}
+          disabled={inputDisabled}
         />
-        <button type="submit" className={styles.sendBtn} disabled={isDrawer}>
+        <button
+          type="submit"
+          className={styles.sendBtn}
+          disabled={inputDisabled}
+        >
           Send
         </button>
       </form>

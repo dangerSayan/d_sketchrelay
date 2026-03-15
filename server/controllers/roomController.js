@@ -1,30 +1,30 @@
 // server/controllers/roomController.js
 const Room = require("../models/Room");
 
-// ─── Generate a unique room code ───────────────────────────────────────────
-// Creates a 6-character alphanumeric code like "XK4F2A"
 const generateRoomCode = () => {
-  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // removed O,0,1,I to avoid confusion
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
   let code = "";
-  for (let i = 0; i < 6; i++) {
+  for (let i = 0; i < 6; i++)
     code += chars[Math.floor(Math.random() * chars.length)];
-  }
   return code;
 };
 
-// ─── CREATE ROOM ───────────────────────────────────────────────────────────
 exports.createRoom = async (req, res) => {
   try {
-    // req.user is set by the protect middleware — we know who's logged in
     const {
       maxPlayers = 8,
       rounds = 3,
       drawTime = 80,
       isPrivate = false,
+      category = "all",
+      customWords = [],
     } = req.body;
 
-    // Keep generating codes until we find one that doesn't exist yet
-    // In practice, collisions are extremely rare with 6 chars
+    const sanitisedCustomWords = customWords
+      .map((w) => w.trim().toLowerCase())
+      .filter((w) => w.length > 1 && w.length <= 30)
+      .slice(0, 50);
+
     let code;
     let exists = true;
     while (exists) {
@@ -32,7 +32,6 @@ exports.createRoom = async (req, res) => {
       exists = await Room.findOne({ code });
     }
 
-    // Create the room document in MongoDB
     const room = await Room.create({
       code,
       host: req.user._id,
@@ -40,7 +39,8 @@ exports.createRoom = async (req, res) => {
       rounds,
       drawTime,
       isPrivate,
-      // The creator is automatically the first player and the host
+      category,
+      customWords: sanitisedCustomWords,
       players: [
         {
           userId: req.user._id,
@@ -60,6 +60,8 @@ exports.createRoom = async (req, res) => {
         drawTime: room.drawTime,
         isPrivate: room.isPrivate,
         status: room.status,
+        category: room.category,
+        customWords: room.customWords,
         players: room.players,
         host: room.host,
       },
@@ -70,30 +72,24 @@ exports.createRoom = async (req, res) => {
   }
 };
 
-// ─── JOIN ROOM ─────────────────────────────────────────────────────────────
 exports.joinRoom = async (req, res) => {
   try {
-    const { code } = req.params; // from the URL: /api/rooms/:code
-
+    const { code } = req.params;
     const room = await Room.findOne({ code: code.toUpperCase() });
 
-    if (!room) {
-      return res.status(404).json({ message: "Room not found" });
-    }
-    if (room.status !== "waiting") {
-      return res.status(400).json({ message: "Game already in progress" });
-    }
-    if (room.players.length >= room.maxPlayers) {
+    if (!room) return res.status(404).json({ message: "Room not found" });
+
+    // Private rooms can only be joined via code (which they already have), so allow it.
+    // The only restriction is full rooms.
+    const activePlayers = room.players.filter((p) => !p.isSpectator);
+    if (activePlayers.length >= room.maxPlayers) {
       return res.status(400).json({ message: "Room is full" });
     }
 
-    // Check if this user is already in the room
     const alreadyIn = room.players.find(
       (p) => p.userId.toString() === req.user._id.toString(),
     );
-
     if (!alreadyIn) {
-      // Add them to the players array and save
       room.players.push({
         userId: req.user._id,
         username: req.user.username,
@@ -111,6 +107,8 @@ exports.joinRoom = async (req, res) => {
         rounds: room.rounds,
         drawTime: room.drawTime,
         status: room.status,
+        category: room.category,
+        isPrivate: room.isPrivate,
         players: room.players,
         host: room.host,
       },
@@ -121,7 +119,6 @@ exports.joinRoom = async (req, res) => {
   }
 };
 
-// ─── GET ROOM ──────────────────────────────────────────────────────────────
 exports.getRoom = async (req, res) => {
   try {
     const room = await Room.findOne({ code: req.params.code.toUpperCase() });
@@ -132,17 +129,15 @@ exports.getRoom = async (req, res) => {
   }
 };
 
-// ─── GET PUBLIC ROOMS ──────────────────────────────────────────────────────
-// So the lobby can show open rooms players can browse and join
+// FIX: return ALL rooms (both public and private) that are waiting or in progress.
+// The client shows private rooms with a lock icon and a disabled Join button.
+// Private rooms ARE visible so players can see they exist — they just can't join
+// without knowing the code.
 exports.getPublicRooms = async (req, res) => {
   try {
-    const rooms = await Room.find({
-      isPrivate: false,
-      status: "waiting",
-    })
-      .select("code players maxPlayers rounds status") // only send what frontend needs
-      .limit(20); // never return unlimited data
-
+    const rooms = await Room.find({ status: "waiting" })
+      .select("code players maxPlayers rounds status isPrivate category")
+      .limit(20);
     res.status(200).json({ rooms });
   } catch (err) {
     res.status(500).json({ message: "Server error" });

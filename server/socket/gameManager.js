@@ -1,11 +1,14 @@
 // server/socket/gameManager.js
 const {
-  getRandomWord,
+  getThreeChoices,
   getWordHint,
   checkGuess,
   editDistance,
   getNextRevealIndex,
 } = require("../utils/words");
+
+// Maximum letters that can ever be revealed in one turn (timed + guess-triggered combined)
+const MAX_REVEALS = 3;
 
 class GameManager {
   constructor() {
@@ -13,27 +16,39 @@ class GameManager {
   }
 
   createGame(roomCode, players, settings) {
+    const activePlayers = players.filter((p) => !p.isSpectator);
+    const spectators = players.filter((p) => p.isSpectator);
+
     const game = {
       roomCode,
-      players: players.map((p) => ({
+      players: activePlayers.map((p) => ({
         userId: p.userId.toString(),
         username: p.username,
         socketId: p.socketId || "",
         score: 0,
         hasGuessedCorrectly: false,
       })),
+      spectators: spectators.map((p) => ({
+        userId: p.userId.toString(),
+        username: p.username,
+        socketId: p.socketId || "",
+      })),
       settings: {
         rounds: settings.rounds || 3,
         drawTime: settings.drawTime || 80,
         maxPlayers: settings.maxPlayers || 8,
+        category: settings.category || "all",
+        customWords: settings.customWords || [],
       },
       currentRound: 1,
       currentDrawerIndex: 0,
       currentWord: null,
       currentHint: null,
+      wordChoices: null,
+      choosingWord: false,
+      choiceTimer: null,
       revealedIndices: new Set(),
-      // pendingReveal: indices that could be revealed (correct-position guesses)
-      // but haven't been shown yet — we wait and pick ONE after a delay
+      totalRevealCount: 0, // tracks total letters revealed this turn
       pendingRevealCandidates: [],
       pendingRevealTimer: null,
       revealTimer: null,
@@ -58,24 +73,56 @@ class GameManager {
       if (game.timer) clearInterval(game.timer);
       if (game.revealTimer) clearInterval(game.revealTimer);
       if (game.pendingRevealTimer) clearTimeout(game.pendingRevealTimer);
+      if (game.choiceTimer) clearTimeout(game.choiceTimer);
     }
     this.games.delete(roomCode);
   }
 
-  startTurn(roomCode) {
+  prepareTurn(roomCode) {
     const game = this.getGame(roomCode);
     if (!game) return null;
 
     if (game.timer) clearInterval(game.timer);
     if (game.revealTimer) clearInterval(game.revealTimer);
     if (game.pendingRevealTimer) clearTimeout(game.pendingRevealTimer);
+    if (game.choiceTimer) clearTimeout(game.choiceTimer);
 
-    const word = getRandomWord();
-    game.currentWord = word;
+    const choices = getThreeChoices(
+      game.settings.category,
+      game.settings.customWords,
+    );
+    game.wordChoices = choices;
+    game.choosingWord = true;
+    game.currentWord = null;
+    game.currentHint = null;
+
+    return { game, choices };
+  }
+
+  pickWord(roomCode, chosenWord) {
+    const game = this.getGame(roomCode);
+    if (!game) return null;
+
+    if (game.choiceTimer) {
+      clearTimeout(game.choiceTimer);
+      game.choiceTimer = null;
+    }
+
+    const validWord =
+      game.wordChoices && game.wordChoices.includes(chosenWord)
+        ? chosenWord
+        : game.wordChoices
+          ? game.wordChoices[0]
+          : chosenWord;
+
+    game.currentWord = validWord;
+    game.choosingWord = false;
+    game.wordChoices = null;
     game.revealedIndices = new Set();
+    game.totalRevealCount = 0;
     game.pendingRevealCandidates = [];
     game.pendingRevealTimer = null;
-    game.currentHint = getWordHint(word, game.revealedIndices);
+    game.currentHint = getWordHint(validWord, game.revealedIndices);
     game.timeLeft = game.settings.drawTime;
     game.roundStartTime = Date.now();
     game.guessedCount = 0;
@@ -87,43 +134,47 @@ class GameManager {
     return game;
   }
 
+  startTurn(roomCode) {
+    const result = this.prepareTurn(roomCode);
+    if (!result) return null;
+    return this.pickWord(roomCode, result.choices[0]);
+  }
+
   getTotalGuessers(roomCode) {
     const game = this.getGame(roomCode);
     if (!game) return 0;
     return game.players.length - 1;
   }
 
-  // ─── TIMER + TIMED LETTER REVEAL ─────────────────────────────────────────
-  // Letter reveal schedule:
-  //   - For an N-letter word with T seconds draw time:
-  //   - Reveal the FIRST letter at T * 0.4 seconds elapsed (40% of time gone)
-  //   - Reveal a SECOND letter at T * 0.7 seconds elapsed (70% of time gone)
-  //   - Never reveal more than 2 letters via timer (keeps it competitive)
-  //   - If a correct-position guess came in, that may reveal 1 additional letter
-  //     but only after a 5-second delay and only if < 2 have been revealed
+  // ─── TIMER + LETTER REVEAL ────────────────────────────────────────────────
+  // Reveal schedule (much harder than before):
+  //   Reveal 1 — at 65% time elapsed  (e.g. at 28s left of 80s)
+  //   Reveal 2 — at 85% time elapsed  (e.g. at 12s left of 80s)
+  // Never more than 2 timed reveals. Combined with guess-triggered reveals
+  // the hard cap is MAX_REVEALS (3) total per turn.
   setTurnTimer(roomCode, onTick, onReveal, onEnd) {
     const game = this.getGame(roomCode);
     if (!game) return;
 
     const drawTime = game.settings.drawTime;
-    // Thresholds: reveal letter at 40% and 70% time elapsed
-    const reveal1At = Math.floor(drawTime * 0.4); // timeLeft when first reveal fires
-    const reveal2At = Math.floor(drawTime * 0.3); // timeLeft when second reveal fires
-    let revealsLeft = 2; // max timed reveals per turn
+
+    // timeLeft values at which each timed reveal fires
+    // 65% elapsed = 35% remaining, 85% elapsed = 15% remaining
+    const reveal1At = Math.floor(drawTime * 0.35);
+    const reveal2At = Math.floor(drawTime * 0.15);
+    let timedRevealsLeft = 2;
 
     game.timer = setInterval(() => {
       game.timeLeft -= 1;
       onTick(game.timeLeft);
 
-      // First timed reveal
-      if (revealsLeft === 2 && game.timeLeft <= reveal1At) {
-        revealsLeft--;
+      if (timedRevealsLeft === 2 && game.timeLeft <= reveal1At) {
+        timedRevealsLeft--;
         this._revealOneRandom(roomCode, onReveal);
       }
 
-      // Second timed reveal
-      if (revealsLeft === 1 && game.timeLeft <= reveal2At) {
-        revealsLeft--;
+      if (timedRevealsLeft === 1 && game.timeLeft <= reveal2At) {
+        timedRevealsLeft--;
         this._revealOneRandom(roomCode, onReveal);
       }
 
@@ -135,15 +186,17 @@ class GameManager {
     }, 1000);
   }
 
-  // Internal: pick one random unrevealed letter, add to hint, call onReveal
+  // Internal: reveal one random unrevealed letter, respecting MAX_REVEALS cap
   _revealOneRandom(roomCode, onReveal) {
     const game = this.getGame(roomCode);
     if (!game || !game.currentWord) return;
+    if (game.totalRevealCount >= MAX_REVEALS) return; // hard cap
 
     const nextIdx = getNextRevealIndex(game.currentWord, game.revealedIndices);
-    if (nextIdx === null) return; // all letters already revealed
+    if (nextIdx === null) return;
 
     game.revealedIndices.add(nextIdx);
+    game.totalRevealCount++;
     game.currentHint = getWordHint(game.currentWord, game.revealedIndices);
     onReveal(game.currentHint);
   }
@@ -155,16 +208,11 @@ class GameManager {
 
     const userIdStr = userId.toString();
     const player = game.players.find((p) => p.userId.toString() === userIdStr);
-    if (!player) {
-      console.log(`processGuess: player not found for userId ${userIdStr}`);
-      return { valid: false };
-    }
+    if (!player) return { valid: false };
 
     const drawer = game.players[game.currentDrawerIndex];
-    if (drawer.userId.toString() === userIdStr) {
+    if (drawer.userId.toString() === userIdStr)
       return { valid: false, isDrawer: true };
-    }
-
     if (player.hasGuessedCorrectly)
       return { valid: false, alreadyGuessed: true };
 
@@ -196,88 +244,86 @@ class GameManager {
       };
     }
 
-    // ── WRONG GUESS: check for correct-position letters ──────────────────
-    // Find all indices where this guess has the right letter in the right spot
-    // and that haven't been revealed yet.
-    const word = game.currentWord.toLowerCase();
-    const guessLower = guess.toLowerCase().trim();
-    const newCandidates = [];
+    // ── Correct-position letter candidates ───────────────────────────────
+    // Only collect candidates if we haven't hit the reveal cap yet
+    if (game.totalRevealCount < MAX_REVEALS) {
+      const word = game.currentWord.toLowerCase();
+      const guessLower = guess.toLowerCase().trim();
+      const newCandidates = [];
 
-    for (let i = 0; i < guessLower.length && i < word.length; i++) {
-      if (guessLower[i] === word[i] && !game.revealedIndices.has(i)) {
-        newCandidates.push(i);
-      }
-    }
-
-    // Add new candidates to the pool (deduplicated)
-    for (const idx of newCandidates) {
-      if (!game.pendingRevealCandidates.includes(idx)) {
-        game.pendingRevealCandidates.push(idx);
-      }
-    }
-
-    // FIX: we do NOT reveal immediately. We schedule a delayed reveal of ONE
-    // letter from the candidate pool. The delay is proportional to the remaining
-    // time: longer remaining time = longer delay (max 8s, min 3s).
-    // We only start a pending timer if one isn't already running.
-    let hintUpdated = false;
-    let updatedHint = null;
-
-    if (
-      newCandidates.length > 0 &&
-      !game.pendingRevealTimer &&
-      game.pendingRevealCandidates.length > 0
-    ) {
-      // Delay: between 3 and 8 seconds, proportional to time remaining
-      const delaySeconds = Math.min(
-        8,
-        Math.max(3, Math.floor(game.timeLeft / 10)),
-      );
-
-      game.pendingRevealTimer = setTimeout(() => {
-        const g = this.getGame(roomCode);
-        if (!g || !g.currentWord || !g.pendingRevealCandidates.length) {
-          if (g) g.pendingRevealTimer = null;
-          return;
+      for (let i = 0; i < guessLower.length && i < word.length; i++) {
+        if (guessLower[i] === word[i] && !game.revealedIndices.has(i)) {
+          newCandidates.push(i);
         }
+      }
 
-        // Pick ONE random candidate from the pool
-        const pool = g.pendingRevealCandidates.filter(
-          (i) => !g.revealedIndices.has(i),
+      for (const idx of newCandidates) {
+        if (!game.pendingRevealCandidates.includes(idx)) {
+          game.pendingRevealCandidates.push(idx);
+        }
+      }
+
+      // Schedule a delayed reveal — only one pending timer at a time
+      // Delay is longer when more time remains (harder early, hint later)
+      // Range: 10s (lots of time left) → 5s (almost out of time)
+      if (
+        newCandidates.length > 0 &&
+        !game.pendingRevealTimer &&
+        game.pendingRevealCandidates.length > 0
+      ) {
+        const delaySeconds = Math.min(
+          12,
+          Math.max(5, Math.floor(game.timeLeft / 6)),
         );
-        if (pool.length === 0) {
-          g.pendingRevealTimer = null;
-          return;
-        }
-        const chosen = pool[Math.floor(Math.random() * pool.length)];
-        g.revealedIndices.add(chosen);
-        g.currentHint = getWordHint(g.currentWord, g.revealedIndices);
-        g.pendingRevealCandidates = []; // clear the pool after one reveal
-        g.pendingRevealTimer = null;
 
-        // The socketHandler passes onReveal as a callback through setTurnTimer.
-        // We can't call it here because we don't have the reference.
-        // Instead we store the pending hint and the socketHandler polls nothing —
-        // we trigger through a stored callback reference.
-        if (g._onReveal) g._onReveal(g.currentHint);
-      }, delaySeconds * 1000);
+        game.pendingRevealTimer = setTimeout(() => {
+          const g = this.getGame(roomCode);
+          if (!g || !g.currentWord || !g.pendingRevealCandidates.length) {
+            if (g) g.pendingRevealTimer = null;
+            return;
+          }
+          if (g.totalRevealCount >= MAX_REVEALS) {
+            g.pendingRevealTimer = null;
+            return;
+          }
+
+          const pool = g.pendingRevealCandidates.filter(
+            (i) => !g.revealedIndices.has(i),
+          );
+          if (pool.length === 0) {
+            g.pendingRevealTimer = null;
+            return;
+          }
+
+          const chosen = pool[Math.floor(Math.random() * pool.length)];
+          g.revealedIndices.add(chosen);
+          g.totalRevealCount++;
+          g.currentHint = getWordHint(g.currentWord, g.revealedIndices);
+          g.pendingRevealCandidates = [];
+          g.pendingRevealTimer = null;
+          if (g._onReveal) g._onReveal(g.currentHint);
+        }, delaySeconds * 1000);
+      }
     }
 
-    // Check if close (edit distance <= 2)
-    const distance = editDistance(guess, game.currentWord);
-    const isClose = distance <= 2 && distance > 0;
+    // ── Graduated close-guess detection ──────────────────────────────────
+    // closeLevel 1 = extremely close (distance 1)
+    // closeLevel 2 = very close      (distance 2)
+    // closeLevel 3 = close           (distance 3)
+    // closeLevel 0 = not close
+    const dist = editDistance(guess, game.currentWord);
+    const closeLevel = dist === 1 ? 1 : dist === 2 ? 2 : dist === 3 ? 3 : 0;
 
     return {
       valid: true,
       correct: false,
-      isClose,
-      hintUpdated, // false here — reveal happens async via setTimeout callback
-      updatedHint,
+      closeLevel,
+      hintUpdated: false,
+      updatedHint: null,
       player,
     };
   }
 
-  // Store the onReveal callback so the pending reveal timer can call it
   storeRevealCallback(roomCode, onReveal) {
     const game = this.getGame(roomCode);
     if (game) game._onReveal = onReveal;
@@ -306,6 +352,21 @@ class GameManager {
     const game = this.getGame(roomCode);
     if (!game) return null;
     return game.players[game.currentDrawerIndex];
+  }
+
+  addSpectator(roomCode, playerData) {
+    const game = this.getGame(roomCode);
+    if (!game) return;
+    const exists = game.spectators.find((s) => s.userId === playerData.userId);
+    if (!exists) game.spectators.push(playerData);
+  }
+
+  removeSpectator(roomCode, userId) {
+    const game = this.getGame(roomCode);
+    if (!game) return;
+    game.spectators = game.spectators.filter(
+      (s) => s.userId.toString() !== userId.toString(),
+    );
   }
 
   addPlayer(roomCode, playerData) {

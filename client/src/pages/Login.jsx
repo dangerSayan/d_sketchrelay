@@ -45,7 +45,7 @@ const Login = () => {
   return (
     <div className={styles.page}>
       <div className={styles.card}>
-        <h1 className={styles.title}>Skribbl Clone</h1>
+        <h1 className={styles.title}>d_d_SketchRelay</h1>
         <p className={styles.subtitle}>Sign in to play</p>
 
         <form onSubmit={handleSubmit} className={styles.form}>

@@ -2,6 +2,7 @@
 import { useContext } from "react";
 import { GameContext } from "../context/GameContext";
 import useAuth from "../hooks/useAuth";
+import Avatar from "./Avatar";
 import styles from "./PlayerList.module.css";
 
 const PlayerList = ({ hostId }) => {
@@ -17,6 +18,7 @@ const PlayerList = ({ hostId }) => {
         const isDrawer = gameState.currentDrawer?.id?.toString() === pid;
         const isHost = pid === hostId;
         const isYou = pid === user?._id?.toString();
+        const isSpectator = p.isSpectator;
 
         return (
           <div
@@ -24,25 +26,32 @@ const PlayerList = ({ hostId }) => {
             className={`${styles.row} ${isDrawer ? styles.drawingRow : ""}`}
           >
             <div className={styles.left}>
-              {/* Glowing pencil indicator for the current drawer */}
+              <Avatar username={p.username} size={28} />
               {isDrawer && (
-                <span className={styles.drawerIcon} title="Currently drawing">
+                <span className={styles.pencil} title="Drawing">
                   ✏️
                 </span>
               )}
               <span
-                className={`${styles.name} ${isDrawer ? styles.drawerName : ""}`}
+                className={`${styles.name} ${isDrawer ? styles.drawerName : ""} ${isSpectator ? styles.spectatorName : ""}`}
               >
                 {p.username}
               </span>
               {isYou && (
                 <span className={`${styles.tag} ${styles.tagYou}`}>you</span>
               )}
-              {isHost && (
+              {isHost && !isSpectator && (
                 <span className={`${styles.tag} ${styles.tagHost}`}>host</span>
               )}
+              {isSpectator && (
+                <span className={`${styles.tag} ${styles.tagSpec}`}>
+                  watching
+                </span>
+              )}
             </div>
-            <span className={styles.score}>{p.score ?? 0}</span>
+            {!isSpectator && (
+              <span className={styles.score}>{p.score ?? 0}</span>
+            )}
           </div>
         );
       })}

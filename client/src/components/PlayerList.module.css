@@ -20,17 +20,15 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0.45rem 0.5rem;
+  padding: 0.4rem 0.5rem;
   border-radius: 8px;
-  margin-bottom: 2px;
+  margin-bottom: 3px;
   transition: background 0.2s;
 }
 
-/* Glowing highlight for the active drawer */
 .drawingRow {
   background: #1e3a5f;
   border: 1px solid #2563eb;
-  box-shadow: 0 0 8px rgba(37, 99, 235, 0.35);
   animation: drawerPulse 2s ease-in-out infinite;
 }
 
@@ -47,18 +45,19 @@
 .left {
   display: flex;
   align-items: center;
-  gap: 0.4rem;
+  gap: 6px;
   min-width: 0;
+  overflow: hidden;
 }
 
-.drawerIcon {
-  font-size: 14px;
+.pencil {
+  font-size: 12px;
   flex-shrink: 0;
 }
 
 .name {
   color: #e2e8f0;
-  font-size: 0.875rem;
+  font-size: 0.85rem;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -68,9 +67,13 @@
   color: #93c5fd;
   font-weight: 600;
 }
+.spectatorName {
+  color: #64748b;
+  font-style: italic;
+}
 
 .tag {
-  font-size: 0.65rem;
+  font-size: 0.62rem;
   padding: 1px 5px;
   border-radius: 999px;
   font-weight: 600;
@@ -85,10 +88,24 @@
   background: #713f12;
   color: #fde68a;
 }
+.tagSpec {
+  background: #1e293b;
+  color: #475569;
+  border: 1px solid #334155;
+}
 
 .score {
   color: #818cf8;
   font-weight: 700;
   font-size: 0.85rem;
   flex-shrink: 0;
+}
+
+@media (max-width: 768px) {
+  .wrapper {
+    padding: 0.6rem;
+  }
+  .name {
+    font-size: 0.78rem;
+  }
 }

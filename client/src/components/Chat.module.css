@@ -1,24 +1,27 @@
 /* client/src/components/Chat.module.css */
 
+/* The wrapper fills the chatArea grid cell (which is overflow:hidden).
+   It must NOT have min-height or it will try to grow beyond the cell. */
 .wrapper {
   display: flex;
   flex-direction: column;
-  height: 100%;
+  height: 100%; /* fill the grid cell */
+  min-height: 0; /* allow shrinking */
   background: #1e293b;
   border: 1px solid #334155;
   border-radius: 12px;
-  overflow: hidden;
-  min-height: 0;
+  overflow: hidden; /* clips children to the wrapper boundary */
 }
 
+/* Feed takes remaining space after inputRow and scrolls internally */
 .feed {
   flex: 1;
+  min-height: 0; /* CRITICAL — without this flex children won't scroll */
   overflow-y: auto;
   padding: 0.75rem;
   display: flex;
   flex-direction: column;
-  gap: 0.3rem;
-  min-height: 0;
+  gap: 0.25rem;
   scrollbar-width: thin;
   scrollbar-color: #334155 transparent;
 }
@@ -35,11 +38,12 @@
 }
 
 .msg {
-  font-size: 0.85rem;
-  padding: 0.3rem 0.5rem;
+  font-size: 0.83rem;
+  padding: 0.28rem 0.5rem;
   border-radius: 6px;
   word-break: break-word;
   line-height: 1.5;
+  flex-shrink: 0;
 }
 
 .msgGuess {
@@ -48,7 +52,7 @@
 .msgSystem {
   color: #475569;
   font-style: italic;
-  font-size: 0.8rem;
+  font-size: 0.78rem;
 }
 
 .msgCorrect {
@@ -63,17 +67,34 @@
   font-weight: 600;
 }
 
-/* Private "so close" hint — orange left-border style */
 .msgClose {
-  background: #422006;
+  background: #292524;
+  color: #d6d3d1;
+  font-style: italic;
+  font-size: 0.78rem;
+  border-left: 3px solid #78716c;
+  border-radius: 0 6px 6px 0;
+}
+
+.msgVeryClose {
+  background: #431407;
   color: #fdba74;
   font-style: italic;
-  font-size: 0.8rem;
+  font-size: 0.78rem;
   border-left: 3px solid #f97316;
   border-radius: 0 6px 6px 0;
 }
 
-/* Flash animation fires when a correct guess arrives */
+.msgExtremelyClose {
+  background: #422006;
+  color: #fde68a;
+  font-style: italic;
+  font-size: 0.78rem;
+  border-left: 3px solid #eab308;
+  border-radius: 0 6px 6px 0;
+  font-weight: 600;
+}
+
 @keyframes flash {
   0% {
     background: #065f46;
@@ -85,7 +106,6 @@
     background: #064e3b;
   }
 }
-
 .flash {
   animation: flash 0.6s ease-out forwards;
 }
@@ -95,10 +115,11 @@
   color: #818cf8;
 }
 
+/* Input row is always pinned at the bottom — never scrolls */
 .inputRow {
   display: flex;
   gap: 0.5rem;
-  padding: 0.6rem;
+  padding: 0.55rem;
   border-top: 1px solid #334155;
   flex-shrink: 0;
 }
@@ -108,13 +129,13 @@
   background: #0f172a;
   border: 1px solid #334155;
   border-radius: 6px;
-  padding: 0.5rem 0.75rem;
+  padding: 0.45rem 0.7rem;
   color: #f1f5f9;
-  font-size: 0.9rem;
+  font-size: 0.875rem;
   outline: none;
   transition: border-color 0.15s;
+  min-width: 0;
 }
-
 .input:focus {
   border-color: #6366f1;
 }
@@ -129,17 +150,26 @@
   color: white;
   border: none;
   border-radius: 6px;
-  padding: 0.5rem 0.9rem;
-  font-size: 0.85rem;
+  padding: 0.45rem 0.8rem;
+  font-size: 0.82rem;
   font-weight: 600;
   transition: background 0.15s;
   flex-shrink: 0;
+  cursor: pointer;
 }
-
 .sendBtn:hover:not(:disabled) {
   background: #4f46e5;
 }
 .sendBtn:disabled {
   opacity: 0.4;
   cursor: not-allowed;
+}
+
+@media (max-width: 640px) {
+  .input {
+    font-size: 16px;
+  }
+  .sendBtn {
+    padding: 0.45rem 0.6rem;
+  }
 }
