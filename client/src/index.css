@@ -32,3 +32,14 @@ a {
   color: inherit;
   text-decoration: none;
 }
+html,
+body {
+  overflow-x: hidden;
+  /* Do NOT set overflow-y here — that would break native scrolling */
+}
+
+/* Ensure the React root never creates its own scroll context */
+#root {
+  min-height: 100vh;
+  /* No overflow property — let children scroll naturally */
+}

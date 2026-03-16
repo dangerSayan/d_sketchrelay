@@ -116,7 +116,7 @@ const Lobby = () => {
       {/* Background Effects */}
       <div className={styles.gridBg}></div>
       <div className={styles.scanlines}></div>
-      <div className={styles.vignette}></div>
+      {/* Vignette div removed to prevent layout issues */}
 
       <header className={styles.header}>
         <div className={styles.logoArea}>

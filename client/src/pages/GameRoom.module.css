@@ -5,7 +5,7 @@
   --neon-pink: #bc13fe;
   --neon-purple: #bd00ff;
   --neon-green: #0aff0a;
-  --bg-dark: #050505;
+  --bg-dark: #050505; /* Kept as requested in your snippet */
   --bg-panel: #0a0a12;
   --bg-surface: #0f0f18;
   --bg-elevated: #1a1a24;
@@ -56,18 +56,7 @@
   z-index: 1000;
 }
 
-/* Vignette */
-.page::after {
-  content: "";
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: radial-gradient(circle, transparent 55%, rgba(0, 0, 0, 0.6) 100%);
-  pointer-events: none;
-  z-index: 999;
-}
+/* VIGNETTE REMOVED HERE - The .page::after block has been deleted to fix dark corners */
 
 /* Scrollable page for waiting / game-over screens */
 .pageScroll {
