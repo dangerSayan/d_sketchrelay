@@ -1,4 +1,3 @@
-// client/src/pages/Login.jsx
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { authAPI } from "../api/index";
@@ -44,26 +43,36 @@ const Login = () => {
 
   return (
     <div className={styles.page}>
+      {/* Background Effects */}
+      <div className={styles.gridBg}></div>
+      <div className={styles.scanlines}></div>
+      <div className={styles.vignette}></div>
+
       <div className={styles.card}>
-        <h1 className={styles.title}>d_d_SketchRelay</h1>
-        <p className={styles.subtitle}>Sign in to play</p>
+        <h1 className={styles.title}>
+          <span className={styles.glitch} data-text="d_SketchRelay">
+            d_SketchRelay
+          </span>
+          <span className={styles.cursor}>_</span>
+        </h1>
+        <p className={styles.subtitle}>&lt; SYSTEM_ACCESS /&gt;</p>
 
         <form onSubmit={handleSubmit} className={styles.form}>
           <div className={styles.field}>
-            <label htmlFor="email">Email</label>
+            <label htmlFor="email">EMAIL_ID</label>
             <input
               id="email"
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@example.com"
+              placeholder="user@net.com"
               required
               disabled={loading}
             />
           </div>
 
           <div className={styles.field}>
-            <label htmlFor="password">Password</label>
+            <label htmlFor="password">PASSWORD_KEY</label>
             <input
               id="password"
               type="password"
@@ -76,15 +85,15 @@ const Login = () => {
           </div>
 
           {/* Only render error div when there's actually an error */}
-          {error && <div className={styles.error}>{error}</div>}
+          {error && <div className={styles.error}>[ERROR] {error}</div>}
 
           <button type="submit" className={styles.btn} disabled={loading}>
-            {loading ? "Signing in..." : "Sign in"}
+            {loading ? "AUTHENTICATING..." : "INITIALIZE_SESSION"}
           </button>
         </form>
 
         <p className={styles.switch}>
-          No account? <Link to="/register">Create one</Link>
+          NEW_OPERATOR? <Link to="/register">CREATE_ID</Link>
         </p>
       </div>
     </div>

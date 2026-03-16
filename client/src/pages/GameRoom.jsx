@@ -85,7 +85,7 @@ const GameRoom = () => {
           <div className={styles.crownWrap}>
             <span className={styles.crown}>👑</span>
           </div>
-          <h1 className={styles.gameOverTitle}>Game Over!</h1>
+          <h1 className={styles.gameOverTitle}>Game Over</h1>
           {winner && (
             <div className={styles.winnerBlock}>
               <Avatar username={winner.username} size={52} />
@@ -118,10 +118,10 @@ const GameRoom = () => {
           </div>
           <div className={styles.gameOverActions}>
             <button className={styles.lobbyBtn} onClick={handleLeaveRoom}>
-              Back to lobby
+              ← Back to Lobby
             </button>
             <button className={styles.homeBtn} onClick={handleGoHome}>
-              Home
+              🏠 Home
             </button>
           </div>
         </div>
@@ -142,7 +142,7 @@ const GameRoom = () => {
             </h1>
             <MuteButton />
           </div>
-          <p className={styles.waitingHint}>Share this code with friends</p>
+          <p className={styles.waitingHint}>[ Share this code with friends ]</p>
 
           <PlayerList hostId={hostId} />
 
@@ -151,29 +151,29 @@ const GameRoom = () => {
               <>
                 <p className={styles.hostNote}>
                   {activePlayers.length < 2
-                    ? "Waiting for at least 1 more player..."
-                    : `${activePlayers.length} players ready — let's go!`}
+                    ? "// Waiting for at least 1 more player..."
+                    : `// ${activePlayers.length} players ready — execute?`}
                 </p>
                 <button
                   className={styles.startBtn}
                   onClick={handleStartGame}
                   disabled={activePlayers.length < 2}
                 >
-                  Start game
+                  Start Game
                 </button>
               </>
             ) : (
               <p className={styles.hostNote}>
                 {isSpectator
-                  ? "You are watching as a spectator"
-                  : "Waiting for the host to start..."}
+                  ? "// Spectator mode active"
+                  : "// Waiting for host to initialize..."}
               </p>
             )}
           </div>
 
           <div className={styles.waitingFooter}>
             <button className={styles.leaveBtn} onClick={handleLeaveRoom}>
-              ← Leave room
+              ← Leave Room
             </button>
             <button className={styles.homeBtn2} onClick={handleGoHome}>
               🏠 Home
@@ -190,7 +190,6 @@ const GameRoom = () => {
       {/* Top bar — room nav + word hint + timer */}
       <header className={styles.topBar}>
         <div className={styles.topLeft}>
-          {/* Leave / Home buttons */}
           <button
             className={styles.navBtn}
             onClick={handleLeaveRoom}
@@ -223,8 +222,8 @@ const GameRoom = () => {
           {gameState.status === "choosing" ? (
             <span className={styles.choosingText}>
               {isDrawer
-                ? "Pick your word..."
-                : `${gameState.currentDrawer?.username} is choosing...`}
+                ? "// Pick your word..."
+                : `// ${gameState.currentDrawer?.username} is choosing...`}
             </span>
           ) : isDrawer && gameState.yourWord ? (
             <span className={styles.yourWord}>

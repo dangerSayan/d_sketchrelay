@@ -1,4 +1,3 @@
-// client/src/pages/Register.jsx
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { authAPI } from "../api/index";
@@ -40,59 +39,69 @@ const Register = () => {
 
   return (
     <div className={styles.page}>
+      {/* Background Effects */}
+      <div className={styles.gridBg}></div>
+      <div className={styles.scanlines}></div>
+      <div className={styles.vignette}></div>
+
       <div className={styles.card}>
-        <h1 className={styles.title}>d_SketchRelay</h1>
-        <p className={styles.subtitle}>Create your account</p>
+        <h1 className={styles.title}>
+          <span className={styles.glitch} data-text="d_SketchRelay">
+            d_SketchRelay
+          </span>
+          <span className={styles.cursor}>_</span>
+        </h1>
+        <p className={styles.subtitle}>&lt; NEW_REGISTRATION /&gt;</p>
 
         <form onSubmit={handleSubmit} className={styles.form}>
           <div className={styles.field}>
-            <label htmlFor="username">Username</label>
+            <label htmlFor="username">USERNAME</label>
             <input
               id="username"
               type="text"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              placeholder="coolartist42"
+              placeholder="enter_alias"
               required
               disabled={loading}
             />
           </div>
 
           <div className={styles.field}>
-            <label htmlFor="email">Email</label>
+            <label htmlFor="email">EMAIL_ID</label>
             <input
               id="email"
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@example.com"
+              placeholder="user@net.com"
               required
               disabled={loading}
             />
           </div>
 
           <div className={styles.field}>
-            <label htmlFor="password">Password</label>
+            <label htmlFor="password">PASSWORD_KEY</label>
             <input
               id="password"
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="at least 6 characters"
+              placeholder="min_6_chars"
               required
               disabled={loading}
             />
           </div>
 
-          {error && <div className={styles.error}>{error}</div>}
+          {error && <div className={styles.error}>[ERROR] {error}</div>}
 
           <button type="submit" className={styles.btn} disabled={loading}>
-            {loading ? "Creating account..." : "Create account"}
+            {loading ? "CREATING_ID..." : "REGISTER_OPERATOR"}
           </button>
         </form>
 
         <p className={styles.switch}>
-          Already have an account? <Link to="/login">Sign in</Link>
+          EXISTING_ID? <Link to="/login">LOGIN</Link>
         </p>
       </div>
     </div>

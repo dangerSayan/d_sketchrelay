@@ -1,4 +1,4 @@
-/* client/src/components/Reactions.module.css */
+@import url("https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap");
 
 .floatingArea {
   position: fixed;
@@ -17,10 +17,19 @@
   align-items: center;
   gap: 6px;
   animation: floatUp 2.5s ease-out forwards;
-  background: rgba(30, 41, 59, 0.85);
-  border: 1px solid #334155;
-  border-radius: 999px;
+  background: rgba(10, 10, 18, 0.9);
+  border: 1px solid rgba(0, 243, 255, 0.25);
   padding: 4px 12px 4px 6px;
+  clip-path: polygon(
+    6px 0,
+    100% 0,
+    100% calc(100% - 6px),
+    calc(100% - 6px) 100%,
+    0 100%,
+    0 6px
+  );
+  box-shadow: 0 0 12px rgba(0, 243, 255, 0.08);
+  backdrop-filter: blur(4px);
 }
 
 @keyframes floatUp {
@@ -48,29 +57,39 @@
 }
 
 .reactionName {
-  color: #94a3b8;
-  font-size: 0.75rem;
+  font-family: "Space Mono", monospace;
+  color: rgba(0, 243, 255, 0.5);
+  font-size: 0.7rem;
 }
 
 .buttons {
   display: flex;
-  gap: 6px;
+  gap: 5px;
 }
 
 .btn {
-  background: #1e293b;
-  border: 1px solid #334155;
-  border-radius: 8px;
+  background: rgba(0, 243, 255, 0.05);
+  border: 1px solid rgba(0, 243, 255, 0.18);
   padding: 5px 8px;
-  font-size: 18px;
+  font-size: 17px;
   cursor: pointer;
   transition: all 0.12s;
   line-height: 1;
+  clip-path: polygon(
+    4px 0,
+    100% 0,
+    100% calc(100% - 4px),
+    calc(100% - 4px) 100%,
+    0 100%,
+    0 4px
+  );
 }
 
 .btn:hover {
-  background: #334155;
+  background: rgba(0, 243, 255, 0.12);
+  border-color: rgba(0, 243, 255, 0.45);
   transform: scale(1.2);
+  box-shadow: 0 0 10px rgba(0, 243, 255, 0.2);
 }
 
 @media (max-width: 640px) {
@@ -80,6 +99,6 @@
   }
   .btn {
     padding: 4px 6px;
-    font-size: 16px;
+    font-size: 15px;
   }
 }

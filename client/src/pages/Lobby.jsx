@@ -1,4 +1,3 @@
-// client/src/pages/Lobby.jsx
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { roomAPI } from "../api/index";
@@ -114,32 +113,47 @@ const Lobby = () => {
 
   return (
     <div className={`${styles.page} ${loaded ? styles.loaded : ""}`}>
+      {/* Background Effects */}
+      <div className={styles.gridBg}></div>
+      <div className={styles.scanlines}></div>
+      <div className={styles.vignette}></div>
+
       <header className={styles.header}>
         <div className={styles.logoArea}>
-          <h1 className={styles.logo}>d_SketchRelay</h1>
-          <span className={styles.tagline}>Draw. Guess. Win.</span>
+          <h1 className={styles.logo}>
+            <span className={styles.glitch} data-text="d_SketchRelay">
+              d_SketchRelay
+            </span>
+            <span className={styles.cursor}>_</span>
+          </h1>
+          <span className={styles.tagline}>&lt; SYSTEM_LOBBY /&gt;</span>
         </div>
         <div className={styles.userInfo}>
-          <Avatar username={user?.username} size={34} />
-          <span>
-            Hey, <strong>{user?.username}</strong>
-          </span>
+          <div className={styles.avatarGlow}>
+            <Avatar username={user?.username} size={34} />
+          </div>
+          <div className={styles.userText}>
+            OPERATOR: <strong>{user?.username}</strong>
+          </div>
           <button onClick={logout} className={styles.logoutBtn}>
-            Log out
+            LOG_OUT
           </button>
         </div>
       </header>
 
-      {error && <div className={styles.globalError}>{error}</div>}
+      {error && <div className={styles.globalError}>[ERROR] {error}</div>}
 
       <div className={styles.grid}>
         {/* ── Create Room ──────────────────────────────────────── */}
         <div className={styles.card}>
-          <h2>Create a room</h2>
+          <div className={styles.cardHeader}>
+            <h2>INITIALIZE_ROOM</h2>
+            <div className={styles.cardDecoLine}></div>
+          </div>
           <form onSubmit={handleCreate} className={styles.form}>
             <div className={styles.field}>
               <label>
-                Max players: <strong>{maxPlayers}</strong>
+                MAX_PLAYERS: <strong>{maxPlayers}</strong>
               </label>
               <input
                 type="range"
@@ -147,12 +161,13 @@ const Lobby = () => {
                 max="12"
                 value={maxPlayers}
                 onChange={(e) => setMaxPlayers(Number(e.target.value))}
+                className={styles.slider}
               />
             </div>
 
             <div className={styles.field}>
               <label>
-                Rounds: <strong>{rounds}</strong>
+                ROUNDS: <strong>{rounds}</strong>
               </label>
               <input
                 type="range"
@@ -160,12 +175,13 @@ const Lobby = () => {
                 max="5"
                 value={rounds}
                 onChange={(e) => setRounds(Number(e.target.value))}
+                className={styles.slider}
               />
             </div>
 
             <div className={styles.field}>
               <label>
-                Draw time: <strong>{drawTime}s</strong>
+                DRAW_TIME: <strong>{drawTime}s</strong>
               </label>
               <input
                 type="range"
@@ -174,11 +190,12 @@ const Lobby = () => {
                 step="10"
                 value={drawTime}
                 onChange={(e) => setDrawTime(Number(e.target.value))}
+                className={styles.slider}
               />
             </div>
 
             <div className={styles.field}>
-              <label>Word category</label>
+              <label>CATEGORY_PROTOCOL</label>
               <select
                 className={styles.select}
                 value={category}
@@ -202,12 +219,11 @@ const Lobby = () => {
                   type="checkbox"
                   checked={isPrivate}
                   onChange={(e) => setIsPrivate(e.target.checked)}
+                  className={styles.checkbox}
                 />
-                🔒 Private room
+                <span className={styles.toggleSwitch}></span>
+                <span>ENCRYPT_CONNECTION (PRIVATE)</span>
               </label>
-              <span className={styles.toggleHint}>
-                {isPrivate ? "Joinable via code only" : "Visible in rooms list"}
-              </span>
             </div>
 
             <div className={styles.toggleRow}>
@@ -216,15 +232,17 @@ const Lobby = () => {
                   type="checkbox"
                   checked={showCustom}
                   onChange={(e) => setShowCustom(e.target.checked)}
+                  className={styles.checkbox}
                 />
-                Custom word list
+                <span className={styles.toggleSwitch}></span>
+                <span>UPLOAD_CUSTOM_DATA</span>
               </label>
             </div>
 
             {showCustom && (
               <div className={styles.field}>
                 <label>
-                  Words{" "}
+                  WORD_DATA_STREAM{" "}
                   <span className={styles.hint}>(comma-separated, max 50)</span>
                 </label>
                 <textarea
@@ -243,27 +261,29 @@ const Lobby = () => {
               disabled={creating}
             >
               {creating
-                ? "Creating..."
-                : `Create ${isPrivate ? "private" : "public"} room`}
+                ? "BOOTING..."
+                : `EXECUTE_${isPrivate ? "PRIVATE" : "PUBLIC"}_ROOM`}
             </button>
           </form>
         </div>
 
         {/* ── Join by Code ─────────────────────────────────────── */}
         <div className={styles.card}>
-          <h2>Join by code</h2>
+          <div className={styles.cardHeader}>
+            <h2>MANUAL_OVERRIDE</h2>
+            <div className={styles.cardDecoLine}></div>
+          </div>
           <p className={styles.joinDesc}>
-            Enter a room code to join any room — including private ones shared
-            with you.
+            Enter a secure room code to establish connection.
           </p>
           <form onSubmit={handleJoin} className={styles.form}>
             <div className={styles.field}>
-              <label>Room code</label>
+              <label>ACCESS_CODE</label>
               <input
                 type="text"
                 value={joinCode}
                 onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
-                placeholder="e.g. UDUFTP"
+                placeholder="U-D-U-F-T-P"
                 maxLength={6}
                 className={styles.codeInput}
               />
@@ -273,7 +293,7 @@ const Lobby = () => {
               className={styles.primaryBtn}
               disabled={joining || !joinCode.trim()}
             >
-              {joining ? "Joining..." : "Join room"}
+              {joining ? "CONNECTING..." : "CONNECT"}
             </button>
           </form>
         </div>
@@ -281,10 +301,10 @@ const Lobby = () => {
         {/* ── Rooms List ───────────────────────────────────────── */}
         <div className={`${styles.card} ${styles.fullWidth}`}>
           <div className={styles.roomsHeader}>
-            <h2>All rooms</h2>
+            <h2>SERVER_BROWSER</h2>
             <span className={styles.liveIndicator}>
               <span className={styles.liveDot} />
-              live
+              ONLINE
             </span>
           </div>
 
@@ -295,7 +315,7 @@ const Lobby = () => {
               ))}
             </div>
           ) : publicRooms.length === 0 ? (
-            <p className={styles.muted}>No open rooms right now. Create one!</p>
+            <p className={styles.muted}>&lt; NO_ACTIVE_SERVERS /&gt;</p>
           ) : (
             <div className={styles.roomList}>
               {publicRooms.map((room) => {
@@ -312,35 +332,35 @@ const Lobby = () => {
                   >
                     <div className={styles.roomInfo}>
                       <div className={styles.roomTopRow}>
-                        <span className={styles.roomCode}>{room.code}</span>
+                        <span className={styles.roomCode}>[{room.code}]</span>
 
                         {/* Private / Public badge */}
                         {isPrivateRoom ? (
                           <span
                             className={`${styles.roomTypeBadge} ${styles.badgePrivate}`}
                           >
-                            🔒 Private
+                            LOCKED
                           </span>
                         ) : (
                           <span
                             className={`${styles.roomTypeBadge} ${styles.badgePublic}`}
                           >
-                            🌐 Public
+                            PUBLIC
                           </span>
                         )}
 
                         {inProgress && (
                           <span className={styles.inProgressBadge}>
-                            In progress
+                            IN_PROGRESS
                           </span>
                         )}
                       </div>
                       <span className={styles.roomMeta}>
-                        {activePlayers.length}/{room.maxPlayers} players ·{" "}
-                        {room.rounds} round{room.rounds !== 1 ? "s" : ""}
+                        {activePlayers.length}/{room.maxPlayers} USERS ·{" "}
+                        {room.rounds} ROUNDS
                         {room.category &&
                           room.category !== "all" &&
-                          ` · ${room.category}`}
+                          ` · ${room.category.toUpperCase()}`}
                       </span>
                     </div>
 
@@ -350,16 +370,11 @@ const Lobby = () => {
                           onClick={() => handleSpectate(room.code)}
                           className={styles.spectateBtn}
                         >
-                          Watch
+                          SPECTATE
                         </button>
                       ) : isPrivateRoom ? (
-                        // Private room — show locked button, tooltip explains why
-                        <button
-                          className={styles.lockedBtn}
-                          disabled
-                          title="Private room — use the room code to join"
-                        >
-                          🔒 Code only
+                        <button className={styles.lockedBtn} disabled>
+                          🔒 LOCKED
                         </button>
                       ) : (
                         <button
@@ -367,7 +382,7 @@ const Lobby = () => {
                           className={styles.joinBtn}
                           disabled={isFull}
                         >
-                          {isFull ? "Full" : "Join"}
+                          {isFull ? "FULL" : "JOIN"}
                         </button>
                       )}
                     </div>

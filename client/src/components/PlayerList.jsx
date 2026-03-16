@@ -49,9 +49,9 @@ const PlayerList = ({ hostId }) => {
                 </span>
               )}
             </div>
-            {!isSpectator && (
+            {/* {!isSpectator && (
               <span className={styles.score}>{p.score ?? 0}</span>
-            )}
+            )} */}
           </div>
         );
       })}

@@ -1,44 +1,70 @@
-/* client/src/components/PlayerList.module.css */
+@import url("https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap");
 
 .wrapper {
-  background: #1e293b;
-  border: 1px solid #334155;
-  border-radius: 12px;
-  padding: 1rem;
+  background: #0a0a12;
+  border: 1px solid rgba(0, 243, 255, 0.2);
+  padding: 0.85rem;
+  position: relative;
+  clip-path: polygon(
+    8px 0,
+    100% 0,
+    100% calc(100% - 8px),
+    calc(100% - 8px) 100%,
+    0 100%,
+    0 8px
+  );
+  box-shadow: 0 0 20px rgba(0, 243, 255, 0.04);
+}
+
+/* top accent */
+.wrapper::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, #00f3ff, transparent);
+  pointer-events: none;
 }
 
 .title {
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: #475569;
+  font-family: "Orbitron", sans-serif;
+  font-size: 0.58rem;
+  font-weight: 700;
+  color: rgba(0, 243, 255, 0.45);
   text-transform: uppercase;
-  letter-spacing: 0.08em;
-  margin-bottom: 0.75rem;
+  letter-spacing: 0.12em;
+  margin-bottom: 0.65rem;
 }
 
 .row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0.4rem 0.5rem;
-  border-radius: 8px;
-  margin-bottom: 3px;
-  transition: background 0.2s;
+  padding: 0.35rem 0.45rem;
+  margin-bottom: 2px;
+  transition: background 0.15s;
+  border-left: 2px solid transparent;
+}
+
+.row:hover {
+  background: rgba(0, 243, 255, 0.03);
 }
 
 .drawingRow {
-  background: #1e3a5f;
-  border: 1px solid #2563eb;
+  background: rgba(0, 243, 255, 0.06);
+  border-left-color: #00f3ff;
   animation: drawerPulse 2s ease-in-out infinite;
 }
 
 @keyframes drawerPulse {
   0%,
   100% {
-    box-shadow: 0 0 6px rgba(37, 99, 235, 0.3);
+    box-shadow: inset 0 0 8px rgba(0, 243, 255, 0.08);
   }
   50% {
-    box-shadow: 0 0 14px rgba(37, 99, 235, 0.6);
+    box-shadow: inset 0 0 16px rgba(0, 243, 255, 0.18);
   }
 }
 
@@ -51,61 +77,75 @@
 }
 
 .pencil {
-  font-size: 12px;
+  font-size: 11px;
   flex-shrink: 0;
 }
 
 .name {
-  color: #e2e8f0;
-  font-size: 0.85rem;
+  font-family: "Space Mono", monospace;
+  color: #c0cce0;
+  font-size: 0.8rem;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .drawerName {
-  color: #93c5fd;
-  font-weight: 600;
+  color: #00f3ff;
+  font-weight: 700;
+  text-shadow: 0 0 6px rgba(0, 243, 255, 0.4);
 }
 .spectatorName {
-  color: #64748b;
+  color: #334155;
   font-style: italic;
 }
 
 .tag {
-  font-size: 0.62rem;
+  font-family: "Orbitron", sans-serif;
+  font-size: 0.55rem;
   padding: 1px 5px;
-  border-radius: 999px;
-  font-weight: 600;
+  font-weight: 700;
   flex-shrink: 0;
+  clip-path: polygon(
+    3px 0,
+    100% 0,
+    100% calc(100% - 3px),
+    calc(100% - 3px) 100%,
+    0 100%,
+    0 3px
+  );
 }
 
 .tagYou {
-  background: #312e81;
-  color: #a5b4fc;
+  background: rgba(188, 19, 254, 0.12);
+  color: #d8b4fe;
+  border: 1px solid rgba(188, 19, 254, 0.3);
 }
 .tagHost {
-  background: #713f12;
+  background: rgba(234, 179, 8, 0.1);
   color: #fde68a;
+  border: 1px solid rgba(234, 179, 8, 0.25);
 }
 .tagSpec {
-  background: #1e293b;
-  color: #475569;
-  border: 1px solid #334155;
+  background: rgba(255, 255, 255, 0.03);
+  color: #334155;
+  border: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .score {
-  color: #818cf8;
+  font-family: "Orbitron", sans-serif;
+  color: #00f3ff;
   font-weight: 700;
-  font-size: 0.85rem;
+  font-size: 0.78rem;
   flex-shrink: 0;
+  text-shadow: 0 0 6px rgba(0, 243, 255, 0.35);
 }
 
 @media (max-width: 768px) {
   .wrapper {
-    padding: 0.6rem;
+    padding: 0.55rem;
   }
   .name {
-    font-size: 0.78rem;
+    font-size: 0.72rem;
   }
 }

@@ -1,5 +1,5 @@
 // client/src/pages/Landing.jsx
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import useAuth from "../hooks/useAuth";
 import styles from "./Landing.module.css";
@@ -25,6 +25,26 @@ const Landing = () => {
   const [wordIdx, setWordIdx] = useState(0);
   const [revealed, setRevealed] = useState(false);
   const [loaded, setLoaded] = useState(false);
+
+  // Intersection Observer for scroll animations
+  const observerRef = useRef();
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add(styles.visible);
+          }
+        });
+      },
+      { threshold: 0.1 },
+    );
+
+    const elements = document.querySelectorAll(`.${styles.revealOnScroll}`);
+    elements.forEach((el) => observer.observe(el));
+
+    return () => observer.disconnect();
+  }, []);
 
   useEffect(() => {
     setTimeout(() => setLoaded(true), 50);
@@ -86,73 +106,71 @@ const Landing = () => {
 
   return (
     <div className={`${styles.page} ${loaded ? styles.loaded : ""}`}>
-      {/* ── Nav ───────────────────────────────────────────────── */}
-      <nav className={styles.nav}>
-        <div className={styles.navLogo}>d_SketchRelay</div>
-        <div className={styles.navActions}>
-          {user ? (
-            <button
-              className={styles.navCta}
-              onClick={() => navigate("/lobby")}
-            >
-              Go to lobby
-            </button>
-          ) : (
-            <>
-              <button
-                className={styles.navLink}
-                onClick={() => navigate("/login")}
-              >
-                Log in
-              </button>
-              <button
-                className={styles.navCta}
-                onClick={() => navigate("/register")}
-              >
-                Sign up free
-              </button>
-            </>
-          )}
-        </div>
-      </nav>
+      {/* Background Elements */}
+      <div className={styles.gridBg}></div>
+      <div className={styles.scanlines}></div>
+      <div className={styles.vignette}></div>
 
       {/* ── Hero ─────────────────────────────────────────────── */}
       <section className={styles.hero}>
         <div className={styles.heroLeft}>
-          <div className={styles.badge}>
-            🎮 Free to play · No download needed
-          </div>
-          <h1 className={styles.heroTitle}>
-            The drawing game
+          <h1
+            className={`${styles.revealOnScroll} ${styles.heroTitle}`}
+            style={{ transitionDelay: "100ms" }}
+          >
+            THE DRAWING GAME
             <br />
-            <span className={styles.heroAccent}>everyone wins at</span>
+            <span className={styles.heroAccent} data-text="EVERYONE WINS AT">
+              EVERYONE WINS AT
+            </span>
           </h1>
-          <p className={styles.heroDesc}>
+          <p
+            className={`${styles.revealOnScroll} ${styles.heroDesc}`}
+            style={{ transitionDelay: "200ms" }}
+          >
             Draw words, guess what your friends are drawing, and compete for the
             top spot. Real-time, multiplayer, instant fun — no account required
             to watch.
           </p>
-          <div className={styles.heroBtns}>
+          <div
+            className={`${styles.revealOnScroll} ${styles.heroBtns}`}
+            style={{ transitionDelay: "300ms" }}
+          >
             <button className={styles.ctaBtn} onClick={handlePlay}>
-              {user ? "Go to lobby" : "Play now — it's free"}
+              <span className={styles.btnGlitch}></span>
+              {user ? "GO TO LOBBY" : "PLAY NOW — IT'S FREE"}
             </button>
             {!user && (
               <button
                 className={styles.secondaryBtn}
                 onClick={() => navigate("/login")}
               >
-                Log in
+                LOG IN
               </button>
             )}
           </div>
-          <p className={styles.heroMeta}>
-            Join rooms instantly · No download · Works on mobile
+          <p
+            className={`${styles.revealOnScroll} ${styles.heroMeta}`}
+            style={{ transitionDelay: "400ms" }}
+          >
+            [JOIN_ROOMS_INSTANTLY] [NO_DOWNLOAD] [WORKS_ON_MOBILE]
           </p>
         </div>
 
         {/* Animated word preview */}
-        <div className={styles.heroRight}>
+        <div
+          className={`${styles.revealOnScroll} ${styles.heroRight}`}
+          style={{ transitionDelay: "200ms" }}
+        >
           <div className={styles.previewCard}>
+            <div className={styles.cardHeader}>
+              <span>PREVIEW_MODE</span>
+              <div className={styles.dots}>
+                <span></span>
+                <span></span>
+                <span></span>
+              </div>
+            </div>
             <div className={styles.previewCanvas}>
               <DrawingPreview wordIdx={wordIdx} />
             </div>
@@ -161,22 +179,30 @@ const Landing = () => {
                 {revealed ? PREVIEW_WORDS[wordIdx] : PREVIEW_HINTS[wordIdx]}
               </span>
               <span className={styles.previewLetterCount}>
-                {PREVIEW_WORDS[wordIdx].length} letters
+                {PREVIEW_WORDS[wordIdx].length} CHARS
               </span>
             </div>
+            <div className={styles.scanlineBar}></div>
           </div>
         </div>
       </section>
 
       {/* ── Features ─────────────────────────────────────────── */}
       <section className={styles.features}>
-        <h2 className={styles.sectionTitle}>Everything you need to play</h2>
+        <h2 className={`${styles.revealOnScroll} ${styles.sectionTitle}`}>
+          &lt; POWER_UPS /&gt;
+        </h2>
         <div className={styles.featureGrid}>
-          {FEATURES.map((f) => (
-            <div key={f.title} className={styles.featureCard}>
+          {FEATURES.map((f, index) => (
+            <div
+              key={f.title}
+              className={`${styles.revealOnScroll} ${styles.featureCard}`}
+              style={{ transitionDelay: `${index * 100}ms` }}
+            >
               <span className={styles.featureIcon}>{f.icon}</span>
               <h3 className={styles.featureTitle}>{f.title}</h3>
               <p className={styles.featureDesc}>{f.desc}</p>
+              <div className={styles.cardDecoLine}></div>
             </div>
           ))}
         </div>
@@ -184,7 +210,9 @@ const Landing = () => {
 
       {/* ── How it works ─────────────────────────────────────── */}
       <section className={styles.howItWorks}>
-        <h2 className={styles.sectionTitle}>How it works</h2>
+        <h2 className={`${styles.revealOnScroll} ${styles.sectionTitle}`}>
+          MISSION BRIEFING
+        </h2>
         <div className={styles.steps}>
           {[
             {
@@ -207,11 +235,18 @@ const Landing = () => {
               title: "Win the round",
               desc: "After all rounds, the player with the most points wins.",
             },
-          ].map((s) => (
-            <div key={s.n} className={styles.step}>
+          ].map((s, i) => (
+            <div
+              key={s.n}
+              className={`${styles.revealOnScroll} ${styles.step}`}
+              style={{ transitionDelay: `${i * 150}ms` }}
+            >
               <div className={styles.stepNum}>{s.n}</div>
-              <h3 className={styles.stepTitle}>{s.title}</h3>
-              <p className={styles.stepDesc}>{s.desc}</p>
+              <div className={styles.stepContent}>
+                <h3 className={styles.stepTitle}>{s.title}</h3>
+                <p className={styles.stepDesc}>{s.desc}</p>
+              </div>
+              {i < 3 && <div className={styles.stepConnector}></div>}
             </div>
           ))}
         </div>
@@ -219,18 +254,23 @@ const Landing = () => {
 
       {/* ── CTA banner ───────────────────────────────────────── */}
       <section className={styles.ctaBanner}>
-        <h2 className={styles.ctaBannerTitle}>Ready to draw?</h2>
-        <p className={styles.ctaBannerDesc}>
-          Jump into a game right now. No setup. No download. Pure fun.
-        </p>
-        <button className={styles.ctaBtn} onClick={handlePlay}>
-          {user ? "Back to lobby" : "Get started for free"}
-        </button>
+        <div className={`${styles.revealOnScroll} ${styles.ctaContent}`}>
+          <h2 className={styles.ctaBannerTitle}>READY TO DRAW?</h2>
+          <p className={styles.ctaBannerDesc}>
+            Jump into a game right now. No setup. No download. Pure fun.
+          </p>
+          <button className={styles.ctaBtn} onClick={handlePlay}>
+            {user ? "BACK TO LOBBY" : "GET STARTED FOR FREE"}
+          </button>
+        </div>
       </section>
 
       {/* ── Footer ───────────────────────────────────────────── */}
       <footer className={styles.footer}>
         <span>d_SketchRelay — A Skribbl-inspired multiplayer drawing game</span>
+        <span className={styles.footerDeco}>
+          01001000 01000101 01001100 01001100 01001111
+        </span>
       </footer>
     </div>
   );
@@ -244,35 +284,40 @@ const DRAWINGS = [
     viewBox="0 0 200 160"
     fill="none"
     xmlns="http://www.w3.org/2000/svg"
+    className={styles.drawingSvg}
   >
     <ellipse
       cx="110"
       cy="90"
       rx="55"
       ry="45"
-      stroke="#818cf8"
+      stroke="#00f3ff"
       strokeWidth="2.5"
+      vectorEffect="non-scaling-stroke"
     />
     <ellipse
       cx="65"
       cy="75"
       rx="25"
       ry="20"
-      stroke="#818cf8"
+      stroke="#00f3ff"
       strokeWidth="2.5"
+      vectorEffect="non-scaling-stroke"
     />
     <path
       d="M55 95 Q40 120 45 140"
-      stroke="#818cf8"
+      stroke="#00f3ff"
       strokeWidth="2.5"
       strokeLinecap="round"
+      vectorEffect="non-scaling-stroke"
     />
-    <circle cx="58" cy="68" r="3" fill="#818cf8" />
+    <circle cx="58" cy="68" r="3" fill="#bc13fe" />
     <path
       d="M80 115 L75 140 M95 118 L93 143 M115 115 L113 140 M130 112 L132 137"
-      stroke="#818cf8"
+      stroke="#00f3ff"
       strokeWidth="2"
       strokeLinecap="round"
+      vectorEffect="non-scaling-stroke"
     />
   </svg>,
   // volcano
@@ -281,30 +326,35 @@ const DRAWINGS = [
     viewBox="0 0 200 160"
     fill="none"
     xmlns="http://www.w3.org/2000/svg"
+    className={styles.drawingSvg}
   >
     <path
       d="M30 150 L85 60 L100 75 L115 55 L170 150 Z"
-      stroke="#818cf8"
+      stroke="#00f3ff"
       strokeWidth="2.5"
       strokeLinejoin="round"
+      vectorEffect="non-scaling-stroke"
     />
     <path
       d="M85 60 Q90 30 100 25 Q110 30 115 55"
       stroke="#f97316"
       strokeWidth="2.5"
       strokeLinecap="round"
+      vectorEffect="non-scaling-stroke"
     />
     <path
       d="M95 35 Q88 20 82 10"
       stroke="#ef4444"
       strokeWidth="2"
       strokeLinecap="round"
+      vectorEffect="non-scaling-stroke"
     />
     <path
       d="M105 32 Q112 18 118 8"
       stroke="#ef4444"
       strokeWidth="2"
       strokeLinecap="round"
+      vectorEffect="non-scaling-stroke"
     />
   </svg>,
   // spaghetti
@@ -313,32 +363,37 @@ const DRAWINGS = [
     viewBox="0 0 200 160"
     fill="none"
     xmlns="http://www.w3.org/2000/svg"
+    className={styles.drawingSvg}
   >
     <ellipse
       cx="100"
       cy="110"
       rx="70"
       ry="30"
-      stroke="#818cf8"
+      stroke="#00f3ff"
       strokeWidth="2.5"
+      vectorEffect="non-scaling-stroke"
     />
     <path
       d="M50 110 Q80 70 100 90 Q120 110 150 75"
       stroke="#eab308"
       strokeWidth="2"
       strokeLinecap="round"
+      vectorEffect="non-scaling-stroke"
     />
     <path
       d="M55 105 Q75 65 105 85 Q125 100 155 68"
       stroke="#eab308"
       strokeWidth="2"
       strokeLinecap="round"
+      vectorEffect="non-scaling-stroke"
     />
     <path
       d="M60 115 Q90 75 110 95 Q130 115 155 80"
       stroke="#eab308"
       strokeWidth="2"
       strokeLinecap="round"
+      vectorEffect="non-scaling-stroke"
     />
     <circle cx="75" cy="88" r="6" fill="#ef4444" opacity="0.8" />
     <circle cx="130" cy="82" r="5" fill="#ef4444" opacity="0.8" />
@@ -349,16 +404,25 @@ const DRAWINGS = [
     viewBox="0 0 200 160"
     fill="none"
     xmlns="http://www.w3.org/2000/svg"
+    className={styles.drawingSvg}
   >
-    <circle cx="100" cy="55" r="30" stroke="#818cf8" strokeWidth="2.5" />
+    <circle
+      cx="100"
+      cy="55"
+      r="30"
+      stroke="#00f3ff"
+      strokeWidth="2.5"
+      vectorEffect="non-scaling-stroke"
+    />
     <rect
       x="70"
       y="80"
       width="60"
       height="55"
       rx="20"
-      stroke="#818cf8"
+      stroke="#00f3ff"
       strokeWidth="2.5"
+      vectorEffect="non-scaling-stroke"
     />
     <rect
       x="82"
@@ -368,24 +432,28 @@ const DRAWINGS = [
       rx="8"
       stroke="#a5f3fc"
       strokeWidth="2"
+      vectorEffect="non-scaling-stroke"
     />
     <path
       d="M55 95 L40 105 M55 110 L40 120"
-      stroke="#818cf8"
+      stroke="#00f3ff"
       strokeWidth="2.5"
       strokeLinecap="round"
+      vectorEffect="non-scaling-stroke"
     />
     <path
       d="M145 95 L160 105 M145 110 L160 120"
-      stroke="#818cf8"
+      stroke="#00f3ff"
       strokeWidth="2.5"
       strokeLinecap="round"
+      vectorEffect="non-scaling-stroke"
     />
     <path
       d="M80 135 L75 155 M120 135 L125 155"
-      stroke="#818cf8"
+      stroke="#00f3ff"
       strokeWidth="2.5"
       strokeLinecap="round"
+      vectorEffect="non-scaling-stroke"
     />
   </svg>,
   // rainbow
@@ -394,6 +462,7 @@ const DRAWINGS = [
     viewBox="0 0 200 160"
     fill="none"
     xmlns="http://www.w3.org/2000/svg"
+    className={styles.drawingSvg}
   >
     <path
       d="M20 140 Q100 10 180 140"
@@ -401,6 +470,7 @@ const DRAWINGS = [
       strokeWidth="8"
       strokeLinecap="round"
       fill="none"
+      vectorEffect="non-scaling-stroke"
     />
     <path
       d="M32 140 Q100 28 168 140"
@@ -408,6 +478,7 @@ const DRAWINGS = [
       strokeWidth="8"
       strokeLinecap="round"
       fill="none"
+      vectorEffect="non-scaling-stroke"
     />
     <path
       d="M44 140 Q100 46 156 140"
@@ -415,6 +486,7 @@ const DRAWINGS = [
       strokeWidth="8"
       strokeLinecap="round"
       fill="none"
+      vectorEffect="non-scaling-stroke"
     />
     <path
       d="M56 140 Q100 64 144 140"
@@ -422,6 +494,7 @@ const DRAWINGS = [
       strokeWidth="8"
       strokeLinecap="round"
       fill="none"
+      vectorEffect="non-scaling-stroke"
     />
     <path
       d="M68 140 Q100 82 132 140"
@@ -429,6 +502,7 @@ const DRAWINGS = [
       strokeWidth="8"
       strokeLinecap="round"
       fill="none"
+      vectorEffect="non-scaling-stroke"
     />
     <path
       d="M80 140 Q100 100 120 140"
@@ -436,23 +510,59 @@ const DRAWINGS = [
       strokeWidth="8"
       strokeLinecap="round"
       fill="none"
+      vectorEffect="non-scaling-stroke"
     />
   </svg>,
 ];
 
-const DrawingPreview = ({ wordIdx }) => (
-  <div
-    style={{
-      width: "100%",
-      height: "100%",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      padding: "8px",
-    }}
-  >
-    {DRAWINGS[wordIdx % DRAWINGS.length]}
-  </div>
-);
+const DrawingPreview = ({ wordIdx }) => {
+  const svgRef = useRef(null);
+
+  useEffect(() => {
+    const svg = svgRef.current;
+    if (!svg) return;
+
+    const paths = svg.querySelectorAll("path, circle, rect, ellipse");
+
+    paths.forEach((path) => {
+      const length = path.getTotalLength();
+      // Reset
+      path.style.transition = "none";
+      path.style.strokeDasharray = length;
+      path.style.strokeDashoffset = length;
+
+      // Force reflow
+      path.getBoundingClientRect();
+
+      // Animate
+      path.style.transition =
+        "stroke-dashoffset 2s ease-in-out, fill 0.5s ease 1.5s";
+      path.style.strokeDashoffset = "0";
+
+      // Handle fills separately if needed (for circles in elephant)
+      if (path.tagName === "circle") {
+        path.style.opacity = "0";
+        path.style.transition = "opacity 0.5s ease 1.5s";
+        setTimeout(() => (path.style.opacity = "0.8"), 1500);
+      }
+    });
+  }, [wordIdx]);
+
+  return (
+    <div
+      ref={svgRef}
+      style={{
+        width: "100%",
+        height: "100%",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: "8px",
+      }}
+    >
+      {DRAWINGS[wordIdx % DRAWINGS.length]}
+    </div>
+  );
+};
 
 export default Landing;
