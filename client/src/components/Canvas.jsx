@@ -201,7 +201,7 @@ const Canvas = ({ roomCode, isDrawer }) => {
   useEffect(() => {
     const main = mainRef.current;
     const preview = previewRef.current;
-    mainCtx.current = main.getContext("2d");
+    mainCtx.current = main.getContext("2d", { willReadFrequently: true });
     previewCtx.current = preview.getContext("2d");
 
     fillBg(mainCtx.current);
