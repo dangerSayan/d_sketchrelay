@@ -1,8 +1,8 @@
 # d_SketchRelay
 
-A real-time multiplayer drawing and guessing game built with the MERN stack and Socket.io. Players join rooms, take turns drawing a secret word while others race to guess it, and compete for the highest score across multiple rounds.
+A real-time multiplayer drawing and guessing game inspired by Skribbl, built with the MERN stack and Socket.io. Players join rooms, take turns drawing a secret word, and compete on speed and accuracy. This README is a full developer reference: architecture, game flow, APIs, sockets, deployment, and customization.
 
-**Live Demo:** [d-sketchrelay.vercel.app](https://d-sketchrelay.vercel.app)
+Live Demo: https://d-sketchrelay.vercel.app
 
 ---
 
@@ -12,27 +12,345 @@ A real-time multiplayer drawing and guessing game built with the MERN stack and 
 - [Features](#features)
 - [Tech Stack](#tech-stack)
 - [Project Structure](#project-structure)
-- [Architecture Overview](#architecture-overview)
+- [Architecture](#architecture)
 - [Game Flow](#game-flow)
-- [Hint System](#hint-system)
-- [Scoring System](#scoring-system)
-- [API Reference](#api-reference)
-- [Socket Events Reference](#socket-events-reference)
-- [Environment Variables](#environment-variables)
-- [Installation & Running Locally](#installation--running-locally)
+- [Socket Events](#socket-events)
+- [Word Bank + Hint Logic](#word-bank--hint-logic)
+- [Security](#security)
+- [Local Setup](#local-setup)
+- [Run Locally](#run-locally)
 - [Deployment](#deployment)
-- [Known Bug — Room Sync After First Login](#known-bug--room-sync-after-first-login)
-- [Known Limitations](#known-limitations)
+- [Known Bugs & Limitations](#known-bugs--limitations)
+- [Changelog (recent)](#changelog-recent)
 
 ---
 
 ## What the App Does
 
-Players register or log in, land on a beautiful landing page, then navigate to the lobby to create or join a room. The host configures settings — number of rounds, draw time per turn, max players, word category, and whether the room is public or private. Once at least 2 players are in the room, the host starts the game.
+`d_SketchRelay` is a competitive multiplayer drawing game with:
 
-Each turn, the current drawer is shown 3 word choices and has 15 seconds to pick one. Everyone else sees animated dots while the drawer decides. Once the word is chosen, the canvas unlocks and the drawer draws while other players type guesses in the chat. Hints reveal gradually over time. Points are awarded based on how quickly each player guesses correctly. After all rounds complete, a confetti-and-crown game-over screen shows the final rankings and saves scores to each user's profile.
+1. Room creation/joining (public/private with code)
+2. Host controls (rounds, draw time, player limits, category, custom words)
+3. Real-time drawing broadcast via Socket.io
+4. Live text guessing with hint reveal logic
+5. Scoreboard and final ranking; stored in user profile
+6. Responsive UI for desktop/mobile
+
+Players take turns drawing for defined `drawTime`, others guess via chat. Points depend on guess time and drawer gets bonus points for successful guessers. The game runs for `rounds` and terminates with winner summary + confetti.
 
 ---
+
+## Features
+
+### Core Gameplay
+
+- Multi-room, multi-player with host role and spectator mode
+- Custom word categories (Animals, Food, Objects, Actions, Places, Movies, Characters)
+- Drawer picks 1 of 3 word options, 15s auto-pick fallback
+- Round-based gameplay, custom round and player limits
+- In-game guessing and feedback + adaptive hint reveals
+
+### Drawing & Interaction
+
+- HTML5 Canvas painting with mouse + touch support
+- Brush sizes + palette colors + eraser + clear
+- Replayable strokes via server sync
+- Sound effects via Web Audio API (no files)
+- Reaction emojis with animation
+
+### UI/UX
+
+- Animated landing page + onboarding steps
+- Lobby room list and filters + live updates
+- Player list with status, host badge, spectator label
+- Sticky top bar with status and guessed count
+- Confetti + winner animation
+- Mobile-first responsiveness
+
+### Performance
+
+- `willReadFrequently` context for canvas snapshots (undo/redo)
+- CSS optimizations and dynamic min-heights
+- Debounced network operations and room updates
+
+### Security & Data
+
+- JWT auth with 7-day expiry
+- Bcrypt password storage
+- Validation in HTTP + sockets
+- MongoDB persistence for profiles and scores
+
+---
+
+## Tech Stack
+
+### Server
+
+- Node.js (v18+)
+- Express
+- Socket.io
+- MongoDB + Mongoose
+- bcryptjs, jsonwebtoken, dotenv, cors
+
+### Client
+
+- React 18 + Vite
+- React Router Dom
+- Socket.io-client
+- Axios
+- CSS Modules
+
+---
+
+## Project Structure
+
+```
+server/
+  index.js
+  config/db.js
+  controllers/
+    authController.js
+    roomController.js
+  middleware/authMiddleware.js
+  models/User.js
+  models/Room.js
+  routes/authRoutes.js
+  routes/roomRoutes.js
+  socket/gameManager.js
+  socket/socketHandler.js
+  utils/words.js
+  test-socket.js
+
+client/
+  src/
+    App.jsx
+    main.jsx
+    api/index.js
+    socket/socket.js
+    context/AuthContext.jsx
+    context/GameContext.jsx
+    hooks/useAuth.js
+    hooks/useSocket.js
+    pages/Landing.jsx
+    pages/Lobby.jsx
+    pages/GameRoom.jsx
+    pages/Login.jsx
+    pages/Register.jsx
+    components/Canvas.jsx
+    components/Chat.jsx
+    components/PlayerList.jsx
+    components/Scoreboard.jsx
+    components/Timer.jsx
+    components/WordChoiceScreen.jsx
+    components/Confetti.jsx
+    components/MutetButton.jsx
+    components/Avatar.jsx
+    components/Reactions.jsx
+    styles/*.module.css
+```
+
+---
+
+## Architecture
+
+### 1. Authentication
+
+- Frontend stores JWT in `localStorage`
+- Axios requests include `Authorization: Bearer <token>`
+- `protect` middleware on server verifies token
+- `AuthContext` manages current user state and refresh on load
+
+### 2. HTTP vs WebSocket flow
+
+- HTTP (`/api/auth`, `/api/rooms`) for initial room fetch, create/join, user data.
+- Socket.io for live events: draw strokes, guesses, timing, scores, chat.
+
+### 3. Game state & synchronization
+
+- `gameManager` keeps room state in memory. Fields:
+  - status (`waiting`, `choosing`, `playing`, `finished`)
+  - current draw word, word hint indices, round, score
+  - timer, guessed list, player list.
+- Socket events are authoritative each step (`start-game`, `pick-word`, `draw`, etc.)
+- If reconnecting, each client receives `game-state-sync` for full state.
+
+---
+
+## Game Flow
+
+### Waiting Room
+
+1. Host creates/join room.
+2. Players join via code.
+3. Player list updates in real-time.
+4. Host starts game when `activePlayers >= 2`.
+
+### Word choice phase
+
+- Server picks 3 choices from category.
+- Drawer receives `word-choices`; others see `choosing-word` overlay.
+- 15s countdown; auto-select once it hits 0.
+
+### Drawing phase
+
+- `new-turn` broadcast:
+  - selected word hint (blanks)
+  - drawer name
+  - timer, round info
+- Drawer draws with `brush`/`eraser`; app emits `draw` events.
+- Server re-broadcasts as `draw-broadcast` to others.
+
+### Guessing + hints
+
+- Guess submitted via `send-guess`.
+- Correct answers: `correct-guess` with points.
+- Close guesses (edit distance 1-3) get in-game private feedback.
+- Timed reveals at 65% and 85% draw time.
+- Wrong but partially correct positions queue 1 extra reveal.
+- Max 3 reveals per turn.
+
+### Turn + game end
+
+- Turn ends on timer 0 or all guessers guessed.
+- Next turn OR `game-over` when rounds complete.
+- `game-over` shows final leaderboard, confetti, crown.
+- Server persists scores to MongoDB.
+
+---
+
+## Socket Events
+
+### Client → Server
+
+- `join-room` `{ roomCode, user }`
+- `join-as-spectator` `{ roomCode, user }`
+- `start-game` `{ roomCode }`
+- `pick-word` `{ roomCode, word }`
+- `draw` `{ roomCode, stroke }`
+- `clear-canvas` `{ roomCode }`
+- `send-guess` `{ roomCode, guess, userId }`
+- `react` `{ roomCode, emoji }`
+
+### Server → Client
+
+- `player-joined`, `player-left`, `host-changed`
+- `game-started`, `choosing-word`, `word-choices`, `new-turn`, `your-word`
+- `draw-broadcast`, `canvas-cleared`
+- `hint-update`, `timer-tick`
+- `correct-guess`, `close-guess`, `turn-ended`, `game-over`
+- `game-state-sync`, `reaction`, `error`
+
+---
+
+## Word Bank + Hint Logic
+
+File: `server/utils/words.js`
+
+- `WORD_CATEGORIES` with categories and word lists.
+- added easy, drawable terms + variety enough for long sessions.
+- `WORDS` flat list for `all` category.
+- `getRandomWord(category, customWords)` with override.
+- `getThreeChoices(category, customWords)` random unique set.
+- `getWordHint(word, revealedIndices)` returns underscore hint with 3-space spacing on word breaks.
+- `checkGuess(guess, word)` safe equal.
+- `editDistance(a,b)` Levenshtein distance for "close guess" hint.
+- `getNextRevealIndex(word, revealedIndices)` incremental reveal.
+
+---
+
+## Security
+
+- Passwords hashed with bcrypt (12 salt rounds)
+- JWT in Authorization header, 7d expiration
+- All protected routes and socket events are validated
+- Input validations on register, login, room creation, invites
+
+---
+
+## Local Setup
+
+1. `git clone https://github.com/yourname/d_SketchRelay.git`
+2. `cd d_SketchRelay`
+3. Setup `.env` in `server/`:
+   - `PORT=5000`
+   - `MONGO_URI=...`
+   - `JWT_SECRET=...`
+4. `cd server && npm install`
+5. `cd ../client && npm install`
+
+---
+
+## Run Locally
+
+Terminal 1:
+
+```bash
+cd server
+npm run dev
+```
+
+Terminal 2:
+
+```bash
+cd client
+npm run dev
+```
+
+Open http://localhost:5173
+
+---
+
+## Deployment
+
+### Backend (Render)
+
+- Create Web Service → root `server`.
+- Build: `npm install`, Start: `node index.js`.
+- Env vars: `MONGO_URI`, `JWT_SECRET`, `PORT`.
+
+### Frontend (Vercel)
+
+- Create project -> root `client`.
+- Env var: `VITE_API_URL=https://your-render-url`.
+- Use `vercel.json` rewrite to `/index.html`.
+
+### CORS on server
+
+- include `http://localhost:5173`, `https://your-vercel-url`.
+
+---
+
+## Known Bugs & Limitations
+
+- In-memory game state lost if server restarts in active room.
+- Render free-tier cold-start delay (15 min inactivity)
+- No persistent guessing chat across sessions (in-game only)
+- `overscroll-behavior` flagged on old iOS browsers (compat warnings only)
+
+---
+
+## Changelog (recent)
+
+- Fixed mobile canvas/chat overlap and made scroll stable.
+- Added `willReadFrequently` on canvas context.
+- Restored host start behavior, sync UI, and word list enrichment.
+- Added robust README + professional docs.
+
+---
+
+## Contributions
+
+1. Fork 🔀
+2. Branch `feature/your-feature`
+3. Implement
+4. Commit with meaningful message
+5. PR + screenshots / short description
+
+---
+
+## License
+
+MIT
 
 ## Features
 
