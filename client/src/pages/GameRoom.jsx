@@ -55,10 +55,10 @@ const GameRoom = () => {
     return () => socket.off("connect", emit);
   }, [joinAsSpectator, user, code]);
 
+  const currentUserId = (user?._id || user?.id)?.toString();
   const hostId = gameState.room?.host?.toString();
-  const isHost = !!hostId && hostId === user?._id?.toString();
-  const isDrawer =
-    gameState.currentDrawer?.id?.toString() === user?._id?.toString();
+  const isHost = !!hostId && hostId === currentUserId;
+  const isDrawer = gameState.currentDrawer?.id?.toString() === currentUserId;
   const isSpectator = gameState.isSpectator;
 
   const handleStartGame = () => socket.emit("start-game", { roomCode: code });

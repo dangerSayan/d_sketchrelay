@@ -32,7 +32,7 @@ const Chat = ({ roomCode, isDrawer, isSpectator }) => {
     socket.emit("send-guess", {
       roomCode,
       guess: input.trim(),
-      userId: user._id,
+      userId: user?._id || user?.id,
     });
     setInput("");
     userScrolledUp.current = false;

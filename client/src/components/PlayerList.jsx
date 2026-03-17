@@ -9,6 +9,8 @@ const PlayerList = ({ hostId }) => {
   const { gameState } = useContext(GameContext);
   const { user } = useAuth();
 
+  const currentUserId = (user?._id || user?.id)?.toString();
+
   return (
     <div className={styles.wrapper}>
       <h3 className={styles.title}>Players</h3>
@@ -17,7 +19,7 @@ const PlayerList = ({ hostId }) => {
           (p.userId?._id || p.userId)?.toString() || p._id?.toString();
         const isDrawer = gameState.currentDrawer?.id?.toString() === pid;
         const isHost = pid === hostId;
-        const isYou = pid === user?._id?.toString();
+        const isYou = pid === currentUserId;
         const isSpectator = p.isSpectator;
 
         return (

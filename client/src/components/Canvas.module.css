@@ -244,6 +244,7 @@
   overflow: hidden;
   border-radius: 12px; /* full radius when no toolbar (spectators/guessers) */
   border: 1px solid #334155;
+  touch-action: none;
 }
 /* When toolbar present, left corners join the toolbar */
 .canvasWrapDrawer {

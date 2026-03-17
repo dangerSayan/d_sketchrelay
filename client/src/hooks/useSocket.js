@@ -26,7 +26,7 @@ const useSocket = (roomCode, user) => {
   }, [user]);
 
   // Use stable primitives as dependencies — these never change for a given session
-  const userId = user?._id?.toString();
+  const userId = (user?._id || user?.id)?.toString();
   const username = user?.username;
 
   useEffect(() => {
