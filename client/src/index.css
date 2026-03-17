@@ -35,11 +35,16 @@ a {
 html,
 body {
   overflow-x: hidden;
-  /* Do NOT set overflow-y here — that would break native scrolling */
+  overflow-y: auto !important;
+  height: auto;
+  min-height: 100%;
+  touch-action: pan-y;
 }
 
 /* Ensure the React root never creates its own scroll context */
 #root {
   min-height: 100vh;
-  /* No overflow property — let children scroll naturally */
+  min-height: 100dvh;
+  height: auto;
+  overflow-y: auto !important;
 }
