@@ -29,7 +29,8 @@ const Layout = ({ children }) => {
   return (
     <>
       {!hideNav && <Navbar />}
-      {children}
+      {/* Wrapper added to account for fixed header height (70px) */}
+      <main style={{ paddingTop: hideNav ? "0px" : "70px" }}>{children}</main>
     </>
   );
 };

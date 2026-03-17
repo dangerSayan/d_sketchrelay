@@ -5,7 +5,7 @@
   --neon-pink: #bc13fe;
   --neon-purple: #bd00ff;
   --neon-green: #0aff0a;
-  --bg-dark: #050505; /* Kept as requested in your snippet */
+  --bg-dark: #050505;
   --bg-panel: #0a0a12;
   --bg-surface: #0f0f18;
   --bg-elevated: #1a1a24;
@@ -16,7 +16,7 @@
   --border-neon: rgba(0, 243, 255, 0.3);
 }
 
-/* Fixed viewport page for the playing screen */
+/* ── DESKTOP LAYOUT ───────────────────────────────────────────────────── */
 .page {
   height: 100vh;
   height: 100dvh;
@@ -27,19 +27,10 @@
   flex-direction: column;
   padding: 0.6rem;
   gap: 0.5rem;
-  overflow: hidden;
+  overflow: hidden; /* Hidden on desktop to fit screen */
   overscroll-behavior: none;
   box-sizing: border-box;
   position: relative;
-}
-
-@media (max-width: 768px) {
-  .page {
-    min-height: 100dvh;
-    height: auto;
-    overflow-y: auto;
-    padding: 0.4rem;
-  }
 }
 
 /* CRT scanlines overlay */
@@ -64,8 +55,6 @@
   pointer-events: none;
   z-index: 1000;
 }
-
-/* VIGNETTE REMOVED HERE - The .page::after block has been deleted to fix dark corners */
 
 /* Scrollable page for waiting / game-over screens */
 .pageScroll {
@@ -218,7 +207,6 @@
   flex-shrink: 0;
 }
 
-/* Navigation buttons in the top bar */
 .navBtn {
   background: transparent;
   border: 1px solid rgba(0, 243, 255, 0.25);
@@ -332,6 +320,9 @@
   min-width: 0;
   overflow: hidden;
   padding: 0 0.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .hint {
@@ -344,6 +335,7 @@
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   word-break: break-word;
+  line-height: 1.4;
 }
 
 .yourWord {
@@ -428,62 +420,6 @@
   z-index: 1;
 }
 
-/* Mobile / tablet layout */
-@media (max-width: 1024px) {
-  .layout {
-    grid-template-columns: 1fr;
-    grid-template-rows: auto 1fr auto;
-    gap: 0.4rem;
-  }
-
-  .sidebar,
-  .chatArea,
-  .canvasArea {
-    max-height: 33vh;
-    min-height: 28vh;
-  }
-
-  .canvasArea {
-    max-height: 45vh;
-    min-height: 35vh;
-  }
-}
-
-@media (max-width: 768px) {
-  .layout {
-    grid-template-columns: 1fr;
-    grid-template-rows: auto 1fr auto;
-    gap: 0.3rem;
-  }
-
-  .sidebar,
-  .chatArea,
-  .canvasArea {
-    max-height: 30vh;
-    min-height: 24vh;
-  }
-
-  .canvasArea {
-    max-height: 45vh;
-    min-height: 30vh;
-  }
-
-  .topBar {
-    padding: 0.35rem 0.5rem;
-  }
-
-  .roundInfo,
-  .guessedBadge,
-  .spectatorBadge {
-    font-size: 0.62rem;
-  }
-
-  .hint {
-    font-size: clamp(0.9rem, 4vw, 1.1rem);
-    letter-spacing: 0.12rem;
-  }
-}
-
 .sidebar {
   display: flex;
   flex-direction: column;
@@ -526,7 +462,128 @@
   flex-direction: column;
 }
 
-/* ── Waiting room ─────────────────────────────────────────────────────────── */
+/* ── RESPONSIVE MOBILE ──────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  /* 1. Allow page to scroll and grow beyond viewport */
+  .page {
+    height: auto !important;
+    min-height: 100dvh;
+    overflow-y: auto; /* Enable scrolling */
+    padding-bottom: 2rem; /* Extra space at bottom */
+    padding-top: 0.4rem;
+    padding-left: 0.4rem;
+    padding-right: 0.4rem;
+  }
+
+  /* 2. Layout becomes a vertical column stack */
+  .layout {
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+  }
+
+  /* 3. Top Bar adjustments */
+  .topBar {
+    flex-wrap: wrap;
+    height: auto;
+    min-height: 60px;
+    padding: 0.5rem 0.4rem;
+  }
+
+  .topLeft,
+  .topRight {
+    flex-basis: 100%; /* Ensure they take full width if wrapped */
+    justify-content: center;
+    margin-bottom: 0.2rem;
+  }
+
+  /* Adjust word area visibility */
+  .wordArea {
+    order: 1; /* Ensure word is visible */
+    min-height: 30px;
+    flex-basis: 100%;
+    margin: 0.25rem 0;
+  }
+
+  .hint {
+    /* Bigger text for visibility */
+    font-size: clamp(1.1rem, 5vw, 1.5rem);
+    letter-spacing: 0.15rem;
+    line-height: 1.5;
+  }
+
+  /* Hide non-essentials to save space */
+  .navBtn {
+    display: none;
+  }
+  .roundInfo {
+    display: none;
+  }
+  .divider {
+    display: none;
+  }
+
+  /* 4. Sidebar (Player List) becomes a horizontal scroll strip */
+  .sidebar {
+    width: 100%;
+    flex-direction: row;
+    overflow-x: auto;
+    overflow-y: hidden;
+    min-height: auto;
+    height: auto;
+    gap: 0.5rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border-dim);
+  }
+  .sidebar > * {
+    flex-shrink: 0;
+    min-width: 140px; /* Ensure cards don't squish */
+  }
+
+  /* 5. Canvas Area - Priority #1: Big and Drawing-Ready */
+  .canvasArea {
+    width: 100%;
+    /* Set a significant minimum height so it never feels small */
+    min-height: 50vh;
+    height: 60vh; /* Try to take 60% of screen height */
+    flex: 0 0 auto;
+    /* Remove constraints that forced shrinking */
+    max-height: none;
+  }
+
+  /* 6. Chat Area - Fixed height at bottom */
+  .chatArea {
+    width: 100%;
+    height: 350px; /* Good readable height */
+    min-height: 350px;
+    max-height: 60vh; /* Don't let it take over if screen is tiny */
+    flex: 0 0 auto;
+  }
+
+  /* Ensure inner chat components respect the fixed height */
+  .chatArea > * {
+    height: 100%;
+  }
+}
+
+/* Extra small mobile tweaks */
+@media (max-width: 480px) {
+  .topBar {
+    padding: 0.4rem 0.2rem;
+  }
+
+  .canvasArea {
+    height: 55vh;
+    min-height: 400px; /* Hard minimum pixel height for drawing */
+  }
+
+  .chatArea {
+    height: 300px;
+    min-height: 300px;
+  }
+}
+
+/* ── Waiting room & Game Over (Existing logic preserved) ───────────── */
 .waitingCard {
   max-width: 460px;
   width: 100%;
@@ -966,59 +1023,4 @@
   border-color: rgba(0, 243, 255, 0.35);
   color: var(--neon-blue);
   box-shadow: 0 0 12px rgba(0, 243, 255, 0.15);
-}
-
-/* ── Mobile ──────────────────────────────────────────────────────────────── */
-@media (max-width: 768px) {
-  .page {
-    padding: 0.4rem;
-    gap: 0.4rem;
-  }
-
-  .layout {
-    grid-template-columns: 1fr;
-    grid-template-rows: auto 1fr 200px;
-  }
-
-  .sidebar {
-    flex-direction: row;
-    overflow-x: auto;
-    overflow-y: visible;
-    min-height: 0;
-    gap: 0.4rem;
-  }
-  .sidebar > * {
-    flex-shrink: 0;
-    min-width: 140px;
-  }
-
-  .hint {
-    font-size: 0.85rem;
-    letter-spacing: 0.12rem;
-  }
-  .topBar {
-    padding: 0.35rem 0.5rem;
-  }
-  .navBtn {
-    display: none;
-  }
-  .roundInfo {
-    display: none;
-  }
-  .divider {
-    display: none;
-  }
-
-  .waitingCard {
-    padding: 1.5rem;
-  }
-  .gameOverCard {
-    padding: 1.5rem;
-  }
-}
-
-@media (max-width: 480px) {
-  .layout {
-    grid-template-rows: auto auto 180px;
-  }
 }
