@@ -1,4 +1,3 @@
-// client/src/components/Chat.jsx
 import { useState, useContext, useRef, useEffect } from "react";
 import { GameContext } from "../context/GameContext";
 import useAuth from "../hooks/useAuth";
@@ -19,10 +18,14 @@ const Chat = ({ roomCode, isDrawer, isSpectator }) => {
     userScrolledUp.current = scrollHeight - scrollTop - clientHeight > 60;
   };
 
-  // Auto-scroll to bottom unless user manually scrolled up
+  // ── FIX: Manual Scroll Instead of scrollIntoView ──────────────────────
   useEffect(() => {
-    if (!userScrolledUp.current) {
-      bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    // Only auto-scroll if the user hasn't manually scrolled up inside the chat
+    if (!userScrolledUp.current && feedRef.current) {
+      // FIX: Directly set scrollTop to scrollHeight.
+      // This scrolls the chat INTERNAL container only.
+      // If the chat is off-screen, it scrolls silently without moving the page.
+      feedRef.current.scrollTop = feedRef.current.scrollHeight;
     }
   }, [gameState.messages]);
 

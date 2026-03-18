@@ -1,5 +1,5 @@
 // client/src/pages/GameRoom.jsx
-import { useContext, useEffect, useRef } from "react";
+import { useContext, useEffect, useRef, useState } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { GameContext } from "../context/GameContext";
 import useAuth from "../hooks/useAuth";
@@ -27,7 +27,11 @@ const GameRoom = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const spectatorEmitted = useRef(false);
-
+  const [copied, setCopied] = useState(false);
+  const [codeCopied, setCodeCopied] = useState(false);
+  const [showQR, setShowQR] = useState(false);
+  const [toast, setToast] = useState(null);
+  const [tooltip, setTooltip] = useState(null);
   const joinAsSpectator = location.state?.spectate === true;
 
   useSocket(code, user);
@@ -152,10 +156,63 @@ const GameRoom = () => {
             </h1>
             <MuteButton />
           </div>
-          <p className={styles.waitingHint}>[ Share this code with friends ]</p>
+          // ... inside the Waiting Room return ...
+          <div className={styles.shareRow}>
+            <p className={styles.waitingHint}>
+              [ Share this code with friends ]
+            </p>
 
+            {/* Updated: Use className instead of inline styles */}
+            <div className={styles.buttonGroup}>
+              {/* COPY LINK */}
+              <button
+                className={styles.copyBtn}
+                onClick={() => {
+                  const link = `${window.location.origin}/room/${code}`;
+
+                  if (navigator.clipboard) {
+                    navigator.clipboard.writeText(link);
+                  } else {
+                    const temp = document.createElement("input");
+                    temp.value = link;
+                    document.body.appendChild(temp);
+                    temp.select();
+                    document.execCommand("copy");
+                    document.body.removeChild(temp);
+                  }
+
+                  setCopied(true);
+                  setTimeout(() => setCopied(false), 1500);
+                }}
+              >
+                {copied ? "LINK COPIED ✓" : "COPY LINK"}
+              </button>
+
+              {/* COPY CODE */}
+              <button
+                className={styles.copyBtn}
+                onClick={() => {
+                  if (navigator.clipboard) {
+                    navigator.clipboard.writeText(code);
+                  } else {
+                    const temp = document.createElement("input");
+                    temp.value = code;
+                    document.body.appendChild(temp);
+                    temp.select();
+                    document.execCommand("copy");
+                    document.body.removeChild(temp);
+                  }
+
+                  setCodeCopied(true);
+                  setTimeout(() => setCodeCopied(false), 1500);
+                }}
+              >
+                {codeCopied ? "CODE COPIED ✓" : "COPY CODE"}
+              </button>
+            </div>
+          </div>
+          // ... rest of Waiting Room ...
           <PlayerList hostId={hostId} />
-
           <div className={styles.waitingActions}>
             {isHost ? (
               <>
@@ -180,7 +237,6 @@ const GameRoom = () => {
               </p>
             )}
           </div>
-
           <div className={styles.waitingFooter}>
             <button className={styles.leaveBtn} onClick={handleLeaveRoom}>
               ← Leave Room

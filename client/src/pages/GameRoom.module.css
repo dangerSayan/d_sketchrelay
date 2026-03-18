@@ -639,6 +639,90 @@
   }
 }
 
+/* ── Share / Copy Link ───────────────────────── */
+
+/* 1. The main container for the text and the button group */
+.shareRow {
+  display: flex;
+  flex-direction: column; /* Stack text and buttons by default (Mobile First) */
+  align-items: center; /* Center everything */
+  gap: 1rem; /* Space between text and buttons */
+  margin-bottom: 1rem;
+}
+
+/* 2. The wrapper specifically for the buttons */
+.buttonGroup {
+  display: flex;
+  flex-wrap: wrap; /* Allow buttons to wrap to next line if space is tight */
+  justify-content: center; /* Center the buttons */
+  gap: 0.75rem; /* Space between the two buttons */
+  width: 100%; /* Take full width to allow proper centering */
+  max-width: 500px; /* Optional: Limit max width so it doesn't look silly on huge screens */
+}
+
+/* 3. The Button Styles */
+.copyBtn {
+  background: transparent;
+  border: 1px solid var(--neon-blue);
+  color: var(--neon-blue);
+
+  /* Layout & Sizing */
+  flex: 1 1 140px; /* Grow to fill space, shrink if needed, start at 140px width */
+  min-width: 140px; /* Don't get smaller than this (good for touch) */
+  max-width: 220px; /* Don't get too fat on large screens */
+
+  /* Visuals */
+  padding: 0.7rem 1rem; /* Larger padding for touch targets (min 44px height) */
+  font-family: "Orbitron", sans-serif;
+  font-size: 0.85rem; /* Slightly larger text for readability */
+  font-weight: 700;
+  cursor: pointer;
+  text-align: center; /* Center text inside button */
+  white-space: nowrap; /* Keep text on one line */
+
+  /* Transitions & Effects */
+  transition: all 0.2s;
+  letter-spacing: 0.5px;
+
+  clip-path: polygon(
+    6px 0,
+    100% 0,
+    100% calc(100% - 6px),
+    calc(100% - 6px) 100%,
+    0 100%,
+    0 6px
+  );
+}
+
+.copyBtn:hover {
+  background: rgba(0, 243, 255, 0.1);
+  box-shadow: 0 0 12px var(--neon-blue);
+  transform: translateY(-1px);
+}
+
+.copyBtn:active {
+  transform: translateY(1px);
+}
+
+/* ── Desktop Optimization (Tablet and Up) ───────────────────────────── */
+@media (min-width: 600px) {
+  .shareRow {
+    flex-direction: column; /* 🔥 keep text above buttons ALWAYS */
+    align-items: center;
+    text-align: center;
+  }
+
+  .buttonGroup {
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .copyBtn {
+    padding: 0.4rem 1rem; /* Slightly tighter padding on desktop */
+    font-size: 0.75rem; /* Slightly smaller font */
+  }
+}
+
 /* ── Waiting room & Game Over (Existing logic preserved) ───────────── */
 .waitingCard {
   max-width: 460px;
@@ -710,9 +794,12 @@
 .waitingHint {
   text-align: center;
   color: var(--text-dim);
-  font-size: 0.78rem;
-  letter-spacing: 0.05em;
+  font-size: 0.8rem;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
+
+  max-width: 260px; /* 🔥 prevents ugly wrapping */
+  line-height: 1.4;
 }
 .waitingActions {
   display: flex;

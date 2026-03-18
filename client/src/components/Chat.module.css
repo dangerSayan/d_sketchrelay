@@ -44,6 +44,9 @@
   scrollbar-width: thin;
   scrollbar-color: rgba(0, 243, 255, 0.15) transparent;
   font-family: "Space Mono", monospace;
+
+  /* ADD THIS: Prevents chat scroll from affecting page scroll */
+  overscroll-behavior: contain;
 }
 
 .feed::-webkit-scrollbar {
