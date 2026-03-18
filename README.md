@@ -1,6 +1,6 @@
 # d_SketchRelay
 
-A real-time multiplayer drawing and guessing game inspired by Skribbl, built with the MERN stack and Socket.io. Players join rooms, take turns drawing a secret word, and compete on speed and accuracy. This README is a full developer reference: architecture, game flow, APIs, sockets, deployment, and customization.
+A real-time multiplayer drawing and guessing game inspired by Skribbl, built with the MERN stack and Socket.io. Players join rooms, take turns drawing a secret word, and compete on speed and accuracy. This README is a full developer reference: architecture, game flow, APIs, sockets, and customization.
 
 Live Demo: https://d-sketchrelay.vercel.app
 
@@ -19,8 +19,6 @@ Live Demo: https://d-sketchrelay.vercel.app
 - [Security](#security)
 - [Local Setup](#local-setup)
 - [Run Locally](#run-locally)
-- [Deployment](#deployment)
-- [Known Bugs & Limitations](#known-bugs--limitations)
 - [Changelog (recent)](#changelog-recent)
 
 ---
@@ -99,55 +97,6 @@ Players take turns drawing for defined `drawTime`, others guess via chat. Points
 - Socket.io-client
 - Axios
 - CSS Modules
-
----
-
-## Project Structure
-
-```
-server/
-  index.js
-  config/db.js
-  controllers/
-    authController.js
-    roomController.js
-  middleware/authMiddleware.js
-  models/User.js
-  models/Room.js
-  routes/authRoutes.js
-  routes/roomRoutes.js
-  socket/gameManager.js
-  socket/socketHandler.js
-  utils/words.js
-  test-socket.js
-
-client/
-  src/
-    App.jsx
-    main.jsx
-    api/index.js
-    socket/socket.js
-    context/AuthContext.jsx
-    context/GameContext.jsx
-    hooks/useAuth.js
-    hooks/useSocket.js
-    pages/Landing.jsx
-    pages/Lobby.jsx
-    pages/GameRoom.jsx
-    pages/Login.jsx
-    pages/Register.jsx
-    components/Canvas.jsx
-    components/Chat.jsx
-    components/PlayerList.jsx
-    components/Scoreboard.jsx
-    components/Timer.jsx
-    components/WordChoiceScreen.jsx
-    components/Confetti.jsx
-    components/MutetButton.jsx
-    components/Avatar.jsx
-    components/Reactions.jsx
-    styles/*.module.css
-```
 
 ---
 
@@ -712,7 +661,7 @@ Never commit this file. Add `.env` to your `.gitignore`.
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/sketchrelay.git
+git clone https://github.com/dangerSayan/d_sketchrelay.git
 cd sketchrelay
 
 # Install server dependencies
@@ -744,83 +693,6 @@ Open `http://localhost:5173` in your browser.
 
 ---
 
-## Deployment
-
-The backend is deployed on **Render** (supports WebSockets). The frontend is deployed on **Vercel**.
-
-### Step 1 — Update environment variables in client
-
-`client/.env.production`:
-
-```
-VITE_API_URL=https://your-render-app.onrender.com
-```
-
-Update `client/src/api/index.js`:
-
-```js
-const api = axios.create({ baseURL: import.meta.env.VITE_API_URL });
-```
-
-Update `client/src/socket/socket.js`:
-
-```js
-const socket = io(import.meta.env.VITE_API_URL, { autoConnect: false });
-```
-
-### Step 2 — Add Vercel routing fix
-
-Create `client/vercel.json`:
-
-```json
-{
-  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
-}
-```
-
-### Step 3 — Deploy backend on Render
-
-1. [render.com](https://render.com) → New Web Service → connect your GitHub repo
-2. Root directory: `server`
-3. Build command: `npm install`
-4. Start command: `node index.js`
-5. Add environment variables: `PORT`, `MONGO_URI`, `JWT_SECRET`
-6. Note your URL: `https://your-app.onrender.com`
-
-### Step 4 — Update server CORS
-
-In `server/index.js`:
-
-```js
-const allowedOrigins = [
-  "http://localhost:5173",
-  "https://your-app.vercel.app", // your Vercel URL
-];
-```
-
-### Step 5 — Deploy frontend on Vercel
-
-1. [vercel.com](https://vercel.com) → New Project → connect your GitHub repo
-2. Root directory: `client`
-3. Add environment variable: `VITE_API_URL=https://your-render-app.onrender.com`
-4. Deploy
-
-### Step 6 — Push all changes
-
-```bash
-git add .
-git commit -m "production config"
-git push
-```
-
-Both platforms auto-redeploy on every push to `main`.
-
-### Free tier note
-
-Render's free tier spins down after 15 minutes of inactivity. The first request after that takes 30–60 seconds to wake up. Use [UptimeRobot](https://uptimerobot.com) (free) to ping your server URL every 14 minutes to keep it awake.
-
----
-
 ## Updating the Deployed App
 
 For any code change — bug fix, new feature, word list update, styling:
@@ -834,26 +706,6 @@ git push
 Render redeploys the backend in ~60 seconds. Vercel redeploys the frontend in ~30 seconds. No dashboard action needed.
 
 **Exception:** if you add a new environment variable, you must add it manually in the Render or Vercel dashboard and trigger a manual redeploy once.
-
----
-
-## Known Bug — Room Sync After First Login
-
-**Symptom:** After logging in for the first time in a browser session and joining or creating a room, the host may not see other players' names and the Start Game button may not appear. Refreshing the page fixes it.
-
-**Root cause (three interacting issues):**
-
-1. `AuthContext` calls `authAPI.getMe()` on mount to verify the JWT. When it resolves, it calls `setUser(newObject)` — a new JavaScript object reference even if the data is the same. This causes `useSocket`'s `useEffect` dependency array to fire again, disconnecting and reconnecting the socket.
-
-2. The `SET_ROOM` action in `GameContext` (triggered by `roomAPI.getOne()`) unconditionally replaces `room.host` with whatever came from the HTTP response, potentially overwriting the more recent host value delivered by socket events.
-
-3. The `roomAPI.getOne()` HTTP call and the socket's `player-joined` event race to update state. If the HTTP response arrives after the socket event, it can overwrite the correct player list.
-
-**Files to fix:**
-
-- `client/src/hooks/useSocket.js` — use stable primitive dependencies (`userId`, `username` strings) instead of the `user` object, and use a ref-based stable callback to prevent duplicate socket connections
-- `client/src/context/GameContext.jsx` — in the `SET_ROOM` case, preserve `state.room?.host` if it was already set by a socket event: `host: state.room?.host || action.payload.host`
-- `client/src/pages/GameRoom.jsx` — add a 300ms delay before `roomAPI.getOne()` so socket events always arrive and populate state before the HTTP response can overwrite them
 
 ---
 
