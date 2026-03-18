@@ -573,7 +573,7 @@
     display: none;
   }
   .roundInfo {
-    display: none;
+    display: inline-block; /* ✅ show it */
   }
   .divider {
     display: none;
@@ -653,15 +653,14 @@
 /* 2. Button Group - Using CSS Grid for Uniform Sizes */
 .buttonGroup {
   display: grid;
-  /* 
-     Create columns that auto-fit. 
-     Min 130px width, max 1fr (equal share).
-     This prevents buttons from becoming giant bars on small screens.
-  */
-  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+
+  /* ✅ ALWAYS 2x2 layout */
+  grid-template-columns: repeat(2, 1fr);
+
   gap: 0.75rem;
   width: 100%;
-  max-width: 600px;
+  max-width: 420px; /* keeps square shape visually */
+  margin: 0 auto; /* center it */
 }
 
 /* 3. The Button Styles */
@@ -687,7 +686,8 @@
   justify-content: center;
   gap: 0.4rem;
 
-  white-space: nowrap;
+  white-space: normal;
+  text-align: center;
   transition: all 0.2s;
   letter-spacing: 0.5px;
 
@@ -729,19 +729,33 @@
   }
 }
 
-/* ── Mobile Specifics for the Buttons ───────────────────────────────────── */
-@media (max-width: 400px) {
-  /* On very narrow screens, force 2 columns so they stay compact */
+/* ── WAITING ROOM RESPONSIVE FIXES (CRITICAL FOR BUTTON VISIBILITY) ───── */
+
+/* 1. Card Container: Reduce padding on mobile to give buttons space */
+@media (max-width: 500px) {
+  .waitingCard {
+    padding: 1.5rem 1rem; /* Reduced from 2.5rem */
+    width: 95%; /* Ensures it fits small screens with margins */
+  }
+
   .buttonGroup {
-    grid-template-columns: repeat(2, 1fr);
+    gap: 0.5rem; /* Tighter gaps */
   }
+
   .copyBtn {
-    font-size: 0.75rem;
-    padding: 0.8rem 0.2rem; /* Increase vertical padding, reduce horizontal */
+    padding: 0.6rem 0.2rem; /* Reduce horizontal padding */
+    font-size: 0.7rem; /* Smaller font */
   }
-  /* Hide text labels on very small screens to keep icons visible and centered */
-  .copyBtn span:not(:first-child) {
-    display: none;
+}
+
+/* 2. Force 2x2 Grid on mobile for perfect alignment */
+@media (max-width: 400px) {
+  .copyBtn {
+    /* Allow text to wrap if absolutely necessary, though we prefer shrinking */
+    white-space: normal;
+    text-align: center;
+    line-height: 1.1;
+    font-size: 0.65rem;
   }
 }
 
@@ -1286,3 +1300,307 @@
   background: rgba(255, 255, 255, 0.1);
   border-color: white;
 }
+
+@media (max-width: 420px) {
+  .buttonGroup {
+    grid-template-columns: 1fr; /* 🔥 vertical stack */
+    max-width: 240px; /* keeps it clean and centered */
+  }
+}
+
+/* ... [Keep all your existing CSS above this line] ... */
+
+/* ── Game over / Winner Styles Enhancement ───────────────────────────────── */
+.gameOverCard {
+  max-width: 520px;
+  width: 100%;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-neon);
+  padding: 2.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.25rem;
+  text-align: center;
+  position: relative;
+  z-index: 1;
+  overflow: hidden;
+  animation: cardIn 0.4s ease-out;
+  clip-path: polygon(
+    16px 0,
+    100% 0,
+    100% calc(100% - 16px),
+    calc(100% - 16px) 100%,
+    0 100%,
+    0 16px
+  );
+  box-shadow:
+    0 0 60px rgba(0, 243, 255, 0.08),
+    0 0 100px rgba(188, 19, 254, 0.06);
+}
+
+/* Decorative corner accent */
+.gameOverCard::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(
+    90deg,
+    var(--neon-blue),
+    var(--neon-pink),
+    var(--neon-blue)
+  );
+  background-size: 200% 100%;
+  animation: shimmerLine 3s linear infinite;
+}
+
+@keyframes shimmerLine {
+  0% {
+    background-position: 0 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.crownWrap {
+  animation: crownDrop 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+@keyframes crownDrop {
+  from {
+    transform: translateY(-50px) scale(0.4) rotate(-15deg);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0) scale(1) rotate(0deg);
+    opacity: 1;
+  }
+}
+
+.crown {
+  font-size: 3rem;
+  line-height: 1;
+  filter: drop-shadow(0 0 12px rgba(234, 179, 8, 0.6));
+}
+
+.gameOverTitle {
+  font-family: "Orbitron", sans-serif;
+  font-size: 1.8rem;
+  font-weight: 900;
+  color: white;
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  text-shadow: 0 0 20px rgba(188, 19, 254, 0.5);
+}
+
+.winnerBlock {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  background: rgba(234, 179, 8, 0.07);
+  border: 1px solid rgba(234, 179, 8, 0.25);
+  padding: 0.75rem 1.25rem;
+  width: 100%;
+  clip-path: polygon(
+    8px 0,
+    100% 0,
+    100% calc(100% - 8px),
+    calc(100% - 8px) 100%,
+    0 100%,
+    0 8px
+  );
+}
+
+.winnerName {
+  color: #fde68a;
+  font-family: "Orbitron", sans-serif;
+  font-size: 1.05rem;
+  font-weight: 700;
+  text-shadow: 0 0 10px rgba(234, 179, 8, 0.4);
+}
+
+.winnerScore {
+  color: #ca8a04;
+  font-size: 0.85rem;
+  font-family: "Space Mono", monospace;
+}
+
+.finalScores {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  width: 100%;
+}
+
+.finalRow {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.45rem 0.75rem;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border-dim);
+  font-size: 0.85rem;
+  clip-path: polygon(
+    4px 0,
+    100% 0,
+    100% calc(100% - 4px),
+    calc(100% - 4px) 100%,
+    0 100%,
+    0 4px
+  );
+  transition: background 0.2s;
+}
+
+.finalRow:hover {
+  background: rgba(0, 243, 255, 0.03);
+}
+
+/* ── PODIUM STYLES (1st, 2nd, 3rd) ───────────────────────────────────── */
+
+/* 1st Place - Gold */
+.firstPlace {
+  background: rgba(234, 179, 8, 0.06);
+  border: 1px solid rgba(234, 179, 8, 0.2);
+  box-shadow: 0 0 10px rgba(234, 179, 8, 0.05);
+}
+
+/* 2nd Place - Silver / Cyan */
+.secondPlace {
+  background: rgba(6, 182, 212, 0.06);
+  border: 1px solid rgba(6, 182, 212, 0.2);
+  box-shadow: 0 0 10px rgba(6, 182, 212, 0.05);
+}
+.secondPlace .finalRank {
+  color: #22d3ee;
+  text-shadow: 0 0 6px rgba(34, 211, 238, 0.4);
+}
+.secondPlace .finalPts {
+  color: #22d3ee;
+  text-shadow: 0 0 6px rgba(34, 211, 238, 0.4);
+}
+
+/* 3rd Place - Bronze / Pink */
+.thirdPlace {
+  background: rgba(236, 72, 153, 0.06);
+  border: 1px solid rgba(236, 72, 153, 0.2);
+  box-shadow: 0 0 10px rgba(236, 72, 153, 0.05);
+}
+.thirdPlace .finalRank {
+  color: #f472b6;
+  text-shadow: 0 0 6px rgba(244, 114, 182, 0.4);
+}
+.thirdPlace .finalPts {
+  color: #f472b6;
+  text-shadow: 0 0 6px rgba(244, 114, 182, 0.4);
+}
+
+.finalRank {
+  width: 28px;
+  font-size: 0.82rem;
+  flex-shrink: 0;
+}
+
+.finalName {
+  flex: 1;
+  color: var(--text-main);
+  text-align: left;
+  font-family: "Space Mono", monospace;
+}
+
+.finalPts {
+  color: var(--neon-blue);
+  font-family: "Orbitron", sans-serif;
+  font-weight: 700;
+  font-size: 0.82rem;
+  text-shadow: 0 0 6px rgba(0, 243, 255, 0.4);
+}
+
+.gameOverActions {
+  display: flex;
+  gap: 0.75rem;
+  width: 100%;
+  position: relative;
+  z-index: 1;
+}
+
+.lobbyBtn {
+  flex: 1;
+  background: linear-gradient(90deg, var(--neon-blue), #00c3ff);
+  color: #000;
+  border: none;
+  padding: 0.75rem;
+  font-family: "Orbitron", sans-serif;
+  font-size: 0.85rem;
+  font-weight: 900;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  clip-path: polygon(
+    8px 0,
+    100% 0,
+    100% calc(100% - 8px),
+    calc(100% - 8px) 100%,
+    0 100%,
+    0 8px
+  );
+  position: relative;
+  overflow: hidden;
+}
+
+.lobbyBtn::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.7),
+    transparent
+  );
+  transition: 0.4s;
+}
+
+.lobbyBtn:hover::before {
+  left: 100%;
+}
+
+.lobbyBtn:hover {
+  box-shadow: 0 0 25px rgba(0, 243, 255, 0.4);
+  transform: translateY(-2px);
+}
+
+.homeBtn {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--text-dim);
+  padding: 0.75rem 1.25rem;
+  font-family: "Space Mono", monospace;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  clip-path: polygon(
+    8px 0,
+    100% 0,
+    100% calc(100% - 8px),
+    calc(100% - 8px) 100%,
+    0 100%,
+    0 8px
+  );
+}
+
+.homeBtn:hover {
+  border-color: rgba(0, 243, 255, 0.35);
+  color: var(--neon-blue);
+  box-shadow: 0 0 12px rgba(0, 243, 255, 0.15);
+}
+
+/* ... [Keep all your remaining CSS below this line] ... */

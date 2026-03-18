@@ -5,6 +5,8 @@ import useAuth from "../hooks/useAuth";
 import useSocket from "../hooks/useSocket";
 import { roomAPI } from "../api/index";
 import socket from "../socket/socket";
+// Import the professional sound engine
+import { sounds } from "../utils/sounds";
 
 import Canvas from "../components/Canvas";
 import Chat from "../components/Chat";
@@ -31,36 +33,13 @@ const GameRoom = () => {
   const [showQR, setShowQR] = useState(false);
   const previousPlayers = useRef([]);
 
+  // Ref to track previous status for sound triggers
+  const prevStatusRef = useRef(gameState.status);
+
   const joinAsSpectator = location.state?.spectate === true;
 
   // ── SOUND FEEDBACK ───────────────────────────────────────────────────────
-  const playCopySound = () => {
-    try {
-      const AudioContext = window.AudioContext || window.webkitAudioContext;
-      if (!AudioContext) return;
-      const ctx = new AudioContext();
-      const osc = ctx.createOscillator();
-      const gainNode = ctx.createGain();
-
-      osc.connect(gainNode);
-      gainNode.connect(ctx.destination);
-
-      osc.type = "sine";
-      osc.frequency.setValueAtTime(800, ctx.currentTime);
-      osc.frequency.exponentialRampToValueAtTime(1200, ctx.currentTime + 0.1);
-
-      gainNode.gain.setValueAtTime(0.1, ctx.currentTime);
-      gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.1);
-
-      osc.start();
-      osc.stop(ctx.currentTime + 0.1);
-    } catch (e) {
-      console.error("Audio play failed", e);
-    }
-  };
-
-  // ── TOAST LOGIC REMOVED ──────────────────────────────────────────────────
-  // Toaster has been completely removed as requested.
+  // Replaced basic beep with professional sound engine
 
   const handleCopy = (text, type) => {
     if (navigator.clipboard) {
@@ -73,7 +52,7 @@ const GameRoom = () => {
       document.execCommand("copy");
       document.body.removeChild(temp);
     }
-    playCopySound(); // 🔔 Play sound
+    sounds.click(); // 🔔 Professional UI Click
     if (type === "link") {
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
@@ -84,6 +63,7 @@ const GameRoom = () => {
   };
 
   const handleWhatsAppShare = () => {
+    sounds.click();
     const link = `${window.location.origin}/room/${code}`;
     const text = `Join my room! Code: ${code} - ${link}`;
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
@@ -115,25 +95,54 @@ const GameRoom = () => {
     return () => socket.off("connect", emit);
   }, [joinAsSpectator, user, code]);
 
+  // ── AUDIO EVENT LISTENER (The "Orchestrator") ─────────────────────────────
+  useEffect(() => {
+    const currentStatus = gameState.status;
+    const previousStatus = prevStatusRef.current;
+
+    // 1. Game Over / Winner Screen
+    if (currentStatus === "finished" && previousStatus !== "finished") {
+      sounds.gameOver();
+    }
+
+    // 2. Word Chosen (Transition from Choosing to Playing)
+    if (currentStatus === "playing" && previousStatus === "choosing") {
+      sounds.wordChosen();
+    }
+
+    // 3. New Round / Choosing Time (Transition to Choosing)
+    if (currentStatus === "choosing" && previousStatus !== "choosing") {
+      sounds.newRound();
+    }
+
+    // Update ref
+    prevStatusRef.current = currentStatus;
+  }, [gameState.status]);
+
   const currentUserId = (user?._id || user?.id)?.toString();
   const hostId = gameState.room?.host?.toString();
   const isHost = !!hostId && hostId === currentUserId;
   const isDrawer = gameState.currentDrawer?.id?.toString() === currentUserId;
   const isSpectator = gameState.isSpectator;
 
-  const handleStartGame = () => socket.emit("start-game", { roomCode: code });
+  const handleStartGame = () => {
+    sounds.click();
+    socket.emit("start-game", { roomCode: code });
+  };
 
   const handleLeaveRoom = () => {
+    sounds.click();
     dispatch({ type: "RESET" });
     navigate("/lobby");
   };
 
   const handleGoHome = () => {
+    sounds.click();
     dispatch({ type: "RESET" });
     navigate("/");
   };
 
-  // ── GAME OVER ─────────────────────────────────────────────────────────────
+  // ── GAME OVER / WINNER SCREEN ────────────────────────────────────────────
   if (gameState.status === "finished") {
     const sorted = [...gameState.scores].sort((a, b) => b.score - a.score);
     const winner = sorted[0];
@@ -155,32 +164,45 @@ const GameRoom = () => {
               </div>
             </div>
           )}
+
           <div className={styles.finalScores}>
-            {sorted.map((p, i) => (
-              <div
-                key={p.userId}
-                className={`${styles.finalRow} ${i === 0 ? styles.firstPlace : ""}`}
-              >
-                <span className={styles.finalRank}>
-                  {i === 0
-                    ? "🥇"
-                    : i === 1
-                      ? "🥈"
-                      : i === 2
-                        ? "🥉"
-                        : `#${i + 1}`}
-                </span>
-                <Avatar username={p.username} size={26} />
-                <span className={styles.finalName}>{p.username}</span>
-                <span className={styles.finalPts}>{p.score} pts</span>
-              </div>
-            ))}
+            {sorted.map((p, i) => {
+              // Determine class based on rank
+              let rankClass = "";
+              if (i === 0) rankClass = styles.firstPlace;
+              else if (i === 1) rankClass = styles.secondPlace;
+              else if (i === 2) rankClass = styles.thirdPlace;
+
+              return (
+                <div
+                  key={p.userId}
+                  className={`${styles.finalRow} ${rankClass}`}
+                >
+                  <span className={styles.finalRank}>
+                    {i === 0
+                      ? "🥇"
+                      : i === 1
+                        ? "🥈"
+                        : i === 2
+                          ? "🥉"
+                          : `#${i + 1}`}
+                  </span>
+                  <Avatar username={p.username} size={26} />
+                  <span className={styles.finalName}>{p.username}</span>
+                  <span className={styles.finalPts}>{p.score} pts</span>
+                </div>
+              );
+            })}
           </div>
+
           <div className={styles.gameOverActions}>
             {isHost && (
               <button
                 className={styles.lobbyBtn}
-                onClick={() => socket.emit("restart-game", { roomCode: code })}
+                onClick={() => {
+                  sounds.click();
+                  socket.emit("restart-game", { roomCode: code });
+                }}
               >
                 🔁 Play Again
               </button>
@@ -205,8 +227,6 @@ const GameRoom = () => {
     return (
       <div className={styles.pageScroll}>
         <div className={styles.waitingCard}>
-          {/* Toast Container Removed Here */}
-
           <div className={styles.waitingTop}>
             <h1 className={styles.waitingTitle}>
               Room <span className={styles.code}>{code}</span>
@@ -220,7 +240,6 @@ const GameRoom = () => {
             </p>
 
             <div className={styles.buttonGroup}>
-              {/* COPY LINK */}
               <button
                 className={`${styles.copyBtn} ${styles.iconBtn}`}
                 onClick={() => handleCopy(roomLink, "link")}
@@ -229,7 +248,6 @@ const GameRoom = () => {
                 {copied ? "LINK COPIED ✓" : "🔗 Copy Link"}
               </button>
 
-              {/* COPY CODE */}
               <button
                 className={`${styles.copyBtn} ${styles.iconBtn}`}
                 onClick={() => handleCopy(code, "code")}
@@ -238,7 +256,6 @@ const GameRoom = () => {
                 {codeCopied ? "CODE COPIED ✓" : "#️⃣ Copy Code"}
               </button>
 
-              {/* WHATSAPP */}
               <button
                 className={`${styles.copyBtn} ${styles.whatsappBtn} ${styles.iconBtn}`}
                 onClick={handleWhatsAppShare}
@@ -247,10 +264,12 @@ const GameRoom = () => {
                 📱 WhatsApp
               </button>
 
-              {/* QR CODE */}
               <button
                 className={`${styles.copyBtn} ${styles.qrBtn} ${styles.iconBtn}`}
-                onClick={() => setShowQR(!showQR)}
+                onClick={() => {
+                  sounds.click();
+                  setShowQR(!showQR);
+                }}
                 title="Show QR Code"
               >
                 📷 QR Code
@@ -258,9 +277,14 @@ const GameRoom = () => {
             </div>
           </div>
 
-          {/* QR CODE MODAL OVERLAY */}
           {showQR && (
-            <div className={styles.qrModal} onClick={() => setShowQR(false)}>
+            <div
+              className={styles.qrModal}
+              onClick={() => {
+                sounds.click();
+                setShowQR(false);
+              }}
+            >
               <div
                 className={styles.qrContent}
                 onClick={(e) => e.stopPropagation()}
@@ -273,7 +297,10 @@ const GameRoom = () => {
                 <p className={styles.qrText}>Scan to Join</p>
                 <button
                   className={styles.closeQrBtn}
-                  onClick={() => setShowQR(false)}
+                  onClick={() => {
+                    sounds.click();
+                    setShowQR(false);
+                  }}
                 >
                   Close
                 </button>
@@ -322,7 +349,6 @@ const GameRoom = () => {
   // ── PLAYING / CHOOSING ────────────────────────────────────────────────────
   return (
     <div className={styles.page}>
-      {/* Top bar — room nav + word hint + timer */}
       <header className={styles.topBar}>
         <div className={styles.topLeft}>
           <button
