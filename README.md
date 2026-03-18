@@ -2,7 +2,7 @@
 
 A real-time multiplayer drawing and guessing game inspired by Skribbl, built with the MERN stack and Socket.io. Players join rooms, take turns drawing a secret word, and compete on speed and accuracy. This README is a full developer reference: architecture, game flow, APIs, sockets, and customization.
 
-Live Demo: https://d-sketchrelay.vercel.app
+Live : https://d-sketchrelay.vercel.app
 
 ---
 

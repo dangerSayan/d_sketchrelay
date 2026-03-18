@@ -268,9 +268,6 @@ const Landing = () => {
       <footer className={styles.footer}>
         <span>d_SketchRelay — A Skribbl-inspired multiplayer drawing game</span>
         <span>Developed by danger_Sayan</span>
-        <span className={styles.footerDeco}>
-          01001000 01000101 01001100 01001100 01001111
-        </span>
       </footer>
     </div>
   );
