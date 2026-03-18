@@ -1,3 +1,5 @@
+// client\src\components\Chat.jsx
+
 import { useState, useContext, useRef, useEffect } from "react";
 import { GameContext } from "../context/GameContext";
 import useAuth from "../hooks/useAuth";

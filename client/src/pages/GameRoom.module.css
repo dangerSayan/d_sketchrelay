@@ -1,3 +1,5 @@
+/* client\src\pages\GameRoom.module.css */
+
 @import url("https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap");
 
 :root {
@@ -16,12 +18,14 @@
   --border-neon: rgba(0, 243, 255, 0.3);
 }
 
-/* ── DESKTOP LAYOUT ───────────────────────────────────────────────────── */
+/* ── DEFAULT LAYOUT (Scrollable - Mobile First) ───────────────────────────── */
 .page {
+  /* Default to auto height to allow scrolling on mobile */
   height: auto !important;
   min-height: 100vh;
   min-height: 100dvh;
   max-height: none !important;
+
   background: var(--bg-dark);
   color: var(--text-main);
   font-family: "Space Mono", monospace;
@@ -29,6 +33,8 @@
   flex-direction: column;
   padding: 0.6rem;
   gap: 0.5rem;
+
+  /* Allow full page scrolling */
   overflow-y: auto !important;
   overflow-x: hidden !important;
   overscroll-behavior: auto;
@@ -513,8 +519,65 @@
   flex-direction: column;
 }
 
-/* ── RESPONSIVE MOBILE ──────────────────────────────────────────────────── */
+/* ── DESKTOP FIX (Min Width 769px) ───────────────────────────────────────────── */
+@media (min-width: 769px) {
+  /* 1. Lock the Page to the Viewport Height */
+  .page {
+    height: 100vh !important;
+    max-height: 100vh !important;
+    overflow: hidden !important; /* Prevents page scroll */
+  }
+
+  /* 2. Lock the Grid to fill the Page */
+  .layout {
+    height: 100% !important;
+    min-height: 0 !important;
+    overflow: hidden !important; /* Contains children */
+  }
+
+  /* 3. Constrain Chat & Sidebar to prevent expansion */
+  .sidebar,
+  .chatArea {
+    min-height: 0 !important;
+    height: 100% !important; /* Fill the grid cell */
+    overflow: hidden !important; /* Scroll internally */
+  }
+
+  /* 4. Constrain Canvas */
+  .canvasArea {
+    overflow: hidden !important;
+    min-height: 0 !important;
+  }
+}
+
+/* ── RESPONSIVE MOBILE (Max Width 768px) ─────────────────────────────────── */
 @media (max-width: 768px) {
+  /* 🔥 FORCE horizontal overflow for player list */
+  .sidebar {
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    display: flex;
+    flex-wrap: nowrap; /* 🚨 IMPORTANT */
+  }
+
+  .sidebar > * {
+    flex: 0 0 auto; /* 🚨 PREVENT SHRINK */
+    min-width: 140px; /* already there, keep */
+  }
+
+  /* 🔥 FORCE horizontal overflow for scoreboard */
+  .finalScores {
+    display: flex; /* 🚨 CHANGE BEHAVIOR */
+    flex-direction: row; /* horizontal */
+    overflow-x: auto;
+    overflow-y: hidden;
+    gap: 0.5rem;
+  }
+
+  .finalRow {
+    flex: 0 0 auto; /* 🚨 PREVENT SHRINK */
+    min-width: 260px; /* slightly reduced for mobile */
+  }
   /* 1. Allow page to scroll and grow beyond viewport */
   .page {
     height: auto !important;
@@ -590,10 +653,26 @@
     gap: 0.5rem;
     padding-bottom: 0.5rem;
     border-bottom: 1px solid var(--border-dim);
+
+    /* Ensure horizontal scrollbar is visible/interactive */
+    -webkit-overflow-scrolling: touch;
   }
   .sidebar > * {
     flex-shrink: 0;
     min-width: 140px; /* Ensure cards don't squish */
+  }
+
+  /* Fix for horizontal scrollbar styling on mobile sidebar */
+  .sidebar::-webkit-scrollbar {
+    height: 4px;
+    width: auto;
+  }
+  .sidebar::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.02);
+  }
+  .sidebar::-webkit-scrollbar-thumb {
+    background: rgba(0, 243, 255, 0.4);
+    border-radius: 2px;
   }
 
   /* 5. Canvas Area - Priority #1: Big and Drawing-Ready */
@@ -619,6 +698,16 @@
   /* Ensure inner chat components respect the fixed height */
   .chatArea > * {
     height: 100%;
+  }
+
+  /* 7. Scorecard (Game Over) - Enable Horizontal Scroll */
+  .finalScores {
+    overflow-x: auto;
+    width: 100%;
+    padding-bottom: 4px; /* Space for scrollbar */
+  }
+  .finalRow {
+    min-width: 300px; /* Force width wider than mobile screen to trigger scroll */
   }
 }
 
@@ -1604,3 +1693,33 @@
 }
 
 /* ... [Keep all your remaining CSS below this line] ... */
+
+/* 🔥 FIX GAME OVER BUTTONS (ALL SCREEN SIZES) */
+.gameOverActions {
+  display: flex;
+  gap: 0.75rem;
+  width: 100%;
+  flex-wrap: wrap; /* 🚨 allows stacking on small screens */
+}
+
+.lobbyBtn,
+.homeBtn {
+  flex: 0 0 auto; /* ❌ REMOVE stretching */
+  width: 100%; /* ✅ full width */
+  text-align: center;
+}
+
+@media (max-width: 480px) {
+  .gameOverActions {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .lobbyBtn,
+  .homeBtn {
+    width: 100%;
+    padding: 0.45rem 0.6rem; /* slightly tighter */
+    font-size: 0.72rem;
+    line-height: 1.2; /* 🔥 prevents vertical stretching */
+  }
+}
