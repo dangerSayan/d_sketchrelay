@@ -8,6 +8,7 @@ const Register = () => {
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -18,14 +19,34 @@ const Register = () => {
     e.preventDefault();
     setError("");
 
-    // Basic client-side validation before hitting the server
-    if (password.length < 6) {
-      return setError("Password must be at least 6 characters");
+    if (!username.trim() || !email.trim() || !password || !confirmPassword) {
+      return setError("Please fill in all fields");
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return setError("Please enter a valid email address");
+    }
+
+    if (password !== confirmPassword) {
+      return setError("Passwords do not match");
+    }
+
+    const passwordRegex =
+      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]).{8,}$/;
+    if (!passwordRegex.test(password)) {
+      return setError(
+        "Password must be at least 8 chars and include uppercase, lowercase, number, special char",
+      );
     }
 
     setLoading(true);
     try {
-      const res = await authAPI.register({ username, email, password });
+      const res = await authAPI.register({
+        username: username.trim(),
+        email: email.trim(),
+        password,
+      });
       login(res.data.user, res.data.token);
       navigate("/lobby");
     } catch (err) {
@@ -92,7 +113,20 @@ const Register = () => {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="min_6_chars"
+              placeholder="min_8_chars, upper/lower/number/symbol"
+              required
+              disabled={loading}
+            />
+          </div>
+
+          <div className={styles.field}>
+            <label htmlFor="confirmPassword">CONFIRM_PASSWORD</label>
+            <input
+              id="confirmPassword"
+              type="password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              placeholder="re-enter password"
               required
               disabled={loading}
             />

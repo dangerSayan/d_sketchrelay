@@ -35,7 +35,7 @@ const useSocket = (roomCode, user) => {
     const doJoin = () => {
       socket.emit("join-room", {
         roomCode,
-        user: { id: userId, username },
+        user: { id: userId, username, avatar: user?.avatar || "" },
       });
     };
 

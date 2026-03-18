@@ -43,14 +43,24 @@ const Navbar = () => {
             HOME
           </button>
           {user && (
-            <button
-              className={`${styles.link} ${
-                path === "/lobby" ? styles.active : ""
-              }`}
-              onClick={() => handleNav("/lobby")}
-            >
-              LOBBY
-            </button>
+            <>
+              <button
+                className={`${styles.link} ${
+                  path === "/lobby" ? styles.active : ""
+                }`}
+                onClick={() => handleNav("/lobby")}
+              >
+                LOBBY
+              </button>
+              <button
+                className={`${styles.link} ${
+                  path === "/profile" ? styles.active : ""
+                }`}
+                onClick={() => handleNav("/profile")}
+              >
+                PROFILE
+              </button>
+            </>
           )}
         </div>
 
@@ -60,10 +70,14 @@ const Navbar = () => {
             <>
               <div
                 className={styles.userInfo}
-                onClick={() => handleNav("/lobby")}
+                onClick={() => handleNav("/profile")}
               >
                 <div className={styles.avatarGlow}>
-                  <Avatar username={user.username} size={28} />
+                  <Avatar
+                    username={user.username}
+                    avatar={user.avatar}
+                    size={28}
+                  />
                 </div>
                 <span className={styles.username}>{user.username}</span>
               </div>
@@ -118,14 +132,24 @@ const Navbar = () => {
               &gt; HOME
             </button>
             {user && (
-              <button
-                className={`${styles.mobileLink} ${
-                  path === "/lobby" ? styles.active : ""
-                }`}
-                onClick={() => handleNav("/lobby")}
-              >
-                &gt; LOBBY
-              </button>
+              <>
+                <button
+                  className={`${styles.mobileLink} ${
+                    path === "/lobby" ? styles.active : ""
+                  }`}
+                  onClick={() => handleNav("/lobby")}
+                >
+                  &gt; LOBBY
+                </button>
+                <button
+                  className={`${styles.mobileLink} ${
+                    path === "/profile" ? styles.active : ""
+                  }`}
+                  onClick={() => handleNav("/profile")}
+                >
+                  &gt; PROFILE
+                </button>
+              </>
             )}
           </div>
 
@@ -133,7 +157,11 @@ const Navbar = () => {
             {user ? (
               <>
                 <div className={styles.mobileUserDisplay}>
-                  <Avatar username={user.username} size={40} />
+                  <Avatar
+                    username={user.username}
+                    avatar={user.avatar}
+                    size={40}
+                  />
                   <span>{user.username}</span>
                 </div>
                 <button

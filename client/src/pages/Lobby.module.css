@@ -365,6 +365,35 @@
   box-shadow: 0 0 20px rgba(0, 243, 255, 0.05);
 }
 
+.profileCardRow {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  margin-bottom: 1rem;
+}
+
+.profileAvatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 58px;
+  height: 58px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 50%;
+  border: 1px dashed rgba(99, 102, 241, 0.5);
+}
+
+.profileName {
+  color: #f8fafc;
+  font-family: "Orbitron", sans-serif;
+  font-size: 0.95rem;
+}
+
+.profileEmail {
+  color: #94a3b8;
+  font-size: 0.8rem;
+}
+
 .cardHeader {
   display: flex;
   align-items: center;

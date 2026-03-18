@@ -40,13 +40,26 @@ module.exports = (io) => {
         );
 
         if (alreadyIn) {
-          // Update their socketId in place
+          // Update their socketId and avatar in place
           await Room.updateOne(
             { code: roomCode, "players.userId": user.id },
-            { $set: { "players.$.socketId": socket.id } },
+            {
+              $set: {
+                "players.$.socketId": socket.id,
+                "players.$.avatar": user.avatar || "",
+              },
+            },
           );
         } else if (room.status === "waiting") {
-          // Add player to room (they aren't in it yet)
+          // 🔥 HARD LIMIT CHECK (VERY IMPORTANT)
+          const activePlayers = room.players.filter((p) => !p.isSpectator);
+
+          if (activePlayers.length >= room.maxPlayers) {
+            return socket.emit("error", {
+              message: "Room is full",
+            });
+          }
+
           await Room.updateOne(
             { code: roomCode },
             {
@@ -54,6 +67,7 @@ module.exports = (io) => {
                 players: {
                   userId: user.id,
                   username: user.username,
+                  avatar: user.avatar || "",
                   socketId: socket.id,
                   isHost: false,
                   score: 0,
@@ -123,6 +137,14 @@ module.exports = (io) => {
           (p) => p.userId.toString() === user.id.toString(),
         );
         if (!alreadyIn) {
+          // 🔥 ADD THIS BLOCK RIGHT HERE
+          const activePlayers = room.players.filter((p) => !p.isSpectator);
+
+          if (activePlayers.length >= room.maxPlayers) {
+            return socket.emit("error", {
+              message: "Room is full",
+            });
+          }
           await Room.updateOne(
             { code: roomCode },
             {
@@ -130,6 +152,7 @@ module.exports = (io) => {
                 players: {
                   userId: user.id,
                   username: user.username,
+                  avatar: user.avatar || "",
                   isSpectator: true,
                   socketId: socket.id,
                   score: 0,
@@ -140,7 +163,12 @@ module.exports = (io) => {
         } else {
           await Room.updateOne(
             { code: roomCode, "players.userId": user.id },
-            { $set: { "players.$.socketId": socket.id } },
+            {
+              $set: {
+                "players.$.socketId": socket.id,
+                "players.$.avatar": user.avatar || "",
+              },
+            },
           );
         }
 

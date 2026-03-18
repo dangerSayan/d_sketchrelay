@@ -1,7 +1,13 @@
 // server/routes/authRoutes.js
 
 const express = require("express");
-const { register, login, getMe } = require("../controllers/authController");
+const {
+  register,
+  login,
+  getMe,
+  updateMe,
+  changePassword,
+} = require("../controllers/authController");
 const { protect } = require("../middleware/authMiddleware");
 
 // express.Router() creates a mini-router — a modular chunk of routes
@@ -18,7 +24,14 @@ router.post("/login", login);
 
 // GET /api/auth/me
 // 'protect' middleware runs FIRST — if token is invalid, getMe never runs
-// This is how you protect a route: router.get('/path', protect, handler)
 router.get("/me", protect, getMe);
+
+// PUT /api/auth/me
+// Allows updating user profile fields (username, avatar)
+router.put("/me", protect, updateMe);
+
+// PUT /api/auth/me/password
+// Allows changing user password with current password validation
+router.put("/me/password", protect, changePassword);
 
 module.exports = router;

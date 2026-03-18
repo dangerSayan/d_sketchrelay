@@ -24,6 +24,7 @@ class GameManager {
       players: activePlayers.map((p) => ({
         userId: p.userId.toString(),
         username: p.username,
+        avatar: p.avatar || "",
         socketId: p.socketId || "",
         score: 0,
         hasGuessedCorrectly: false,
@@ -31,8 +32,10 @@ class GameManager {
       spectators: spectators.map((p) => ({
         userId: p.userId.toString(),
         username: p.username,
+        avatar: p.avatar || "",
         socketId: p.socketId || "",
       })),
+
       settings: {
         rounds: settings.rounds || 3,
         drawTime: settings.drawTime || 80,

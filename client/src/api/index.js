@@ -32,6 +32,14 @@ export const authAPI = {
   getMe: () => api.get("/api/auth/me"),
   // no body needed — token is attached by interceptor
   // returns { user }
+
+  updateMe: (data) => api.put("/api/auth/me", data),
+  // data = { username?, avatar? }
+  // returns { user, message }
+
+  changePassword: (data) => api.put("/api/auth/me/password", data),
+  // data = { currentPassword, newPassword, confirmNewPassword }
+  // returns { message }
 };
 
 // ── ROOM API ──────────────────────────────────────────────────────────────────

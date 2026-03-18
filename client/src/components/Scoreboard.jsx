@@ -22,7 +22,7 @@ const Scoreboard = () => {
           className={`${styles.row} ${i === 0 ? styles.first : ""}`}
         >
           <span className={styles.rank}>{i === 0 ? "🥇" : `#${i + 1}`}</span>
-          <Avatar username={p.username} size={22} />
+          <Avatar username={p.username} avatar={p.avatar} size={22} />
           <span className={styles.name}>{p.username}</span>
           <span className={styles.score}>{p.score ?? 0}</span>
         </div>

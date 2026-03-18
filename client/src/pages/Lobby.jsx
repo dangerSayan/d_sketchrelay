@@ -128,9 +128,13 @@ const Lobby = () => {
           </h1>
           <span className={styles.tagline}>&lt; SYSTEM_LOBBY /&gt;</span>
         </div>
-        <div className={styles.userInfo}>
+        <div
+          className={styles.userInfo}
+          onClick={() => navigate("/profile")}
+          style={{ cursor: "pointer" }}
+        >
           <div className={styles.avatarGlow}>
-            <Avatar username={user?.username} size={34} />
+            <Avatar username={user?.username} avatar={user?.avatar} size={34} />
           </div>
           <div className={styles.userText}>
             OPERATOR: <strong>{user?.username}</strong>
@@ -158,9 +162,12 @@ const Lobby = () => {
               <input
                 type="range"
                 min="2"
-                max="12"
+                max="20"
                 value={maxPlayers}
-                onChange={(e) => setMaxPlayers(Number(e.target.value))}
+                onChange={(e) => {
+                  const value = Number(e.target.value);
+                  setMaxPlayers(Math.min(20, Math.max(2, value)));
+                }}
                 className={styles.slider}
               />
             </div>

@@ -28,7 +28,7 @@ const PlayerList = ({ hostId }) => {
             className={`${styles.row} ${isDrawer ? styles.drawingRow : ""}`}
           >
             <div className={styles.left}>
-              <Avatar username={p.username} size={28} />
+              <Avatar username={p.username} avatar={p.avatar} size={28} />
               {isDrawer && (
                 <span className={styles.pencil} title="Drawing">
                   ✏️

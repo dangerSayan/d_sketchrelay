@@ -15,6 +15,7 @@ import Landing from "./pages/Landing";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Lobby from "./pages/Lobby";
+import Profile from "./pages/Profile";
 import GameRoom from "./pages/GameRoom";
 
 const ProtectedRoute = ({ children }) => {
@@ -46,6 +47,14 @@ const AppRoutes = () => (
         element={
           <ProtectedRoute>
             <Lobby />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/profile"
+        element={
+          <ProtectedRoute>
+            <Profile />
           </ProtectedRoute>
         }
       />

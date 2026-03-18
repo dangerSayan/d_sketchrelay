@@ -45,6 +45,7 @@ exports.createRoom = async (req, res) => {
         {
           userId: req.user._id,
           username: req.user.username,
+          avatar: req.user.avatar || "",
           isHost: true,
           score: 0,
         },
@@ -93,6 +94,7 @@ exports.joinRoom = async (req, res) => {
       room.players.push({
         userId: req.user._id,
         username: req.user.username,
+        avatar: req.user.avatar || "",
         isHost: false,
         score: 0,
       });

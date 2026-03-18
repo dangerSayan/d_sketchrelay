@@ -87,7 +87,11 @@ const GameRoom = () => {
       spectatorEmitted.current = true;
       socket.emit("join-as-spectator", {
         roomCode: code,
-        user: { id: user._id, username: user.username },
+        user: {
+          id: user._id,
+          username: user.username,
+          avatar: user.avatar || "",
+        },
       });
     };
     if (socket.connected) emit();
@@ -157,7 +161,11 @@ const GameRoom = () => {
           <h1 className={styles.gameOverTitle}>Game Over</h1>
           {winner && (
             <div className={styles.winnerBlock}>
-              <Avatar username={winner.username} size={52} />
+              <Avatar
+                username={winner.username}
+                avatar={winner.avatar}
+                size={52}
+              />
               <div>
                 <div className={styles.winnerName}>{winner.username}</div>
                 <div className={styles.winnerScore}>{winner.score} pts</div>
@@ -187,7 +195,7 @@ const GameRoom = () => {
                           ? "🥉"
                           : `#${i + 1}`}
                   </span>
-                  <Avatar username={p.username} size={26} />
+                  <Avatar username={p.username} avatar={p.avatar} size={26} />
                   <span className={styles.finalName}>{p.username}</span>
                   <span className={styles.finalPts}>{p.score} pts</span>
                 </div>
