@@ -639,25 +639,29 @@
   }
 }
 
-/* ── Share / Copy Link ───────────────────────── */
+/* ── Share / Copy Link (Refactored for Uniform Grid) ───────────────────────── */
 
 /* 1. The main container for the text and the button group */
 .shareRow {
   display: flex;
-  flex-direction: column; /* Stack text and buttons by default (Mobile First) */
-  align-items: center; /* Center everything */
-  gap: 1rem; /* Space between text and buttons */
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
   margin-bottom: 1rem;
 }
 
-/* 2. The wrapper specifically for the buttons */
+/* 2. Button Group - Using CSS Grid for Uniform Sizes */
 .buttonGroup {
-  display: flex;
-  flex-wrap: wrap; /* Allow buttons to wrap to next line if space is tight */
-  justify-content: center; /* Center the buttons */
-  gap: 0.75rem; /* Space between the two buttons */
-  width: 100%; /* Take full width to allow proper centering */
-  max-width: 500px; /* Optional: Limit max width so it doesn't look silly on huge screens */
+  display: grid;
+  /* 
+     Create columns that auto-fit. 
+     Min 130px width, max 1fr (equal share).
+     This prevents buttons from becoming giant bars on small screens.
+  */
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 0.75rem;
+  width: 100%;
+  max-width: 600px;
 }
 
 /* 3. The Button Styles */
@@ -666,21 +670,24 @@
   border: 1px solid var(--neon-blue);
   color: var(--neon-blue);
 
-  /* Layout & Sizing */
-  flex: 1 1 140px; /* Grow to fill space, shrink if needed, start at 140px width */
-  min-width: 140px; /* Don't get smaller than this (good for touch) */
-  max-width: 220px; /* Don't get too fat on large screens */
+  /* Fill the grid cell completely */
+  width: 100%;
+  justify-self: stretch;
 
   /* Visuals */
-  padding: 0.7rem 1rem; /* Larger padding for touch targets (min 44px height) */
+  padding: 0.7rem 0.5rem; /* Comfortable touch target */
   font-family: "Orbitron", sans-serif;
-  font-size: 0.85rem; /* Slightly larger text for readability */
+  font-size: 0.8rem;
   font-weight: 700;
   cursor: pointer;
-  text-align: center; /* Center text inside button */
-  white-space: nowrap; /* Keep text on one line */
 
-  /* Transitions & Effects */
+  /* Flex layout for internal content (icon + text) */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+
+  white-space: nowrap;
   transition: all 0.2s;
   letter-spacing: 0.5px;
 
@@ -704,22 +711,37 @@
   transform: translateY(1px);
 }
 
-/* ── Desktop Optimization (Tablet and Up) ───────────────────────────── */
+/* ── Desktop Optimization ───────────────────────────────────── */
 @media (min-width: 600px) {
   .shareRow {
-    flex-direction: column; /* 🔥 keep text above buttons ALWAYS */
+    flex-direction: column;
     align-items: center;
     text-align: center;
   }
 
   .buttonGroup {
-    justify-content: center;
-    flex-wrap: wrap;
+    /* On wider screens, limit the max width so buttons don't look stretched */
+    max-width: 500px;
   }
 
   .copyBtn {
-    padding: 0.4rem 1rem; /* Slightly tighter padding on desktop */
-    font-size: 0.75rem; /* Slightly smaller font */
+    font-size: 0.85rem;
+  }
+}
+
+/* ── Mobile Specifics for the Buttons ───────────────────────────────────── */
+@media (max-width: 400px) {
+  /* On very narrow screens, force 2 columns so they stay compact */
+  .buttonGroup {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .copyBtn {
+    font-size: 0.75rem;
+    padding: 0.8rem 0.2rem; /* Increase vertical padding, reduce horizontal */
+  }
+  /* Hide text labels on very small screens to keep icons visible and centered */
+  .copyBtn span:not(:first-child) {
+    display: none;
   }
 }
 
@@ -797,8 +819,7 @@
   font-size: 0.8rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-
-  max-width: 260px; /* 🔥 prevents ugly wrapping */
+  max-width: 260px;
   line-height: 1.4;
 }
 .waitingActions {
@@ -1166,4 +1187,102 @@
   border-color: rgba(0, 243, 255, 0.35);
   color: var(--neon-blue);
   box-shadow: 0 0 12px rgba(0, 243, 255, 0.15);
+}
+
+/* ── BUTTON VARIANTS ─────────────────────────────────────────────────── */
+.whatsappBtn {
+  border-color: #25d366 !important;
+  color: #25d366 !important;
+}
+
+.whatsappBtn:hover {
+  background: rgba(37, 211, 102, 0.1) !important;
+  box-shadow: 0 0 12px #25d366 !important;
+}
+
+.qrBtn {
+  border-color: var(--neon-pink) !important;
+  color: var(--neon-pink) !important;
+}
+
+.qrBtn:hover {
+  background: rgba(188, 19, 254, 0.1) !important;
+  box-shadow: 0 0 12px var(--neon-pink) !important;
+}
+
+/* ── QR MODAL ────────────────────────────────────────────────────────── */
+.qrModal {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(4px);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.qrContent {
+  background: var(--bg-elevated);
+  padding: 1.5rem;
+  border: 1px solid var(--neon-pink);
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  box-shadow: 0 0 40px rgba(188, 19, 254, 0.2);
+  animation: scaleIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes scaleIn {
+  from {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.qrImage {
+  border-radius: 8px;
+  border: 2px solid white;
+  padding: 5px;
+  background: white;
+}
+
+.qrText {
+  color: var(--text-dim);
+  font-size: 0.8rem;
+  margin: 0;
+  font-family: "Space Mono", monospace;
+}
+
+.closeQrBtn {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: white;
+  padding: 0.4rem 1.5rem;
+  cursor: pointer;
+  font-family: "Orbitron", sans-serif;
+  text-transform: uppercase;
+  font-size: 0.7rem;
+  transition: 0.2s;
+}
+
+.closeQrBtn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: white;
 }

@@ -1,4 +1,3 @@
-// client/src/pages/GameRoom.jsx
 import { useContext, useEffect, useRef, useState } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { GameContext } from "../context/GameContext";
@@ -30,10 +29,67 @@ const GameRoom = () => {
   const [copied, setCopied] = useState(false);
   const [codeCopied, setCodeCopied] = useState(false);
   const [showQR, setShowQR] = useState(false);
-  const [toast, setToast] = useState(null);
-  const [tooltip, setTooltip] = useState(null);
+  const previousPlayers = useRef([]);
+
   const joinAsSpectator = location.state?.spectate === true;
 
+  // ── SOUND FEEDBACK ───────────────────────────────────────────────────────
+  const playCopySound = () => {
+    try {
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContext) return;
+      const ctx = new AudioContext();
+      const osc = ctx.createOscillator();
+      const gainNode = ctx.createGain();
+
+      osc.connect(gainNode);
+      gainNode.connect(ctx.destination);
+
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(800, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(1200, ctx.currentTime + 0.1);
+
+      gainNode.gain.setValueAtTime(0.1, ctx.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.1);
+
+      osc.start();
+      osc.stop(ctx.currentTime + 0.1);
+    } catch (e) {
+      console.error("Audio play failed", e);
+    }
+  };
+
+  // ── TOAST LOGIC REMOVED ──────────────────────────────────────────────────
+  // Toaster has been completely removed as requested.
+
+  const handleCopy = (text, type) => {
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(text);
+    } else {
+      const temp = document.createElement("input");
+      temp.value = text;
+      document.body.appendChild(temp);
+      temp.select();
+      document.execCommand("copy");
+      document.body.removeChild(temp);
+    }
+    playCopySound(); // 🔔 Play sound
+    if (type === "link") {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } else {
+      setCodeCopied(true);
+      setTimeout(() => setCodeCopied(false), 1500);
+    }
+  };
+
+  const handleWhatsAppShare = () => {
+    const link = `${window.location.origin}/room/${code}`;
+    const text = `Join my room! Code: ${code} - ${link}`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
+  };
+
+  // ── GAME LOGIC ───────────────────────────────────────────────────────────
   useSocket(code, user);
 
   useEffect(() => {
@@ -42,7 +98,7 @@ const GameRoom = () => {
       .getOne(code)
       .then((res) => dispatch({ type: "SET_ROOM", payload: res.data.room }))
       .catch(() => navigate("/lobby"));
-  }, [code]);
+  }, [code, dispatch, navigate]);
 
   useEffect(() => {
     if (!joinAsSpectator || !user || spectatorEmitted.current) return;
@@ -129,11 +185,9 @@ const GameRoom = () => {
                 🔁 Play Again
               </button>
             )}
-
             <button className={styles.lobbyBtn} onClick={handleLeaveRoom}>
               ← Back to Lobby
             </button>
-
             <button className={styles.homeBtn} onClick={handleGoHome}>
               🏠 Home
             </button>
@@ -146,72 +200,87 @@ const GameRoom = () => {
   // ── WAITING ROOM ──────────────────────────────────────────────────────────
   if (gameState.status === "waiting") {
     const activePlayers = gameState.players.filter((p) => !p.isSpectator);
+    const roomLink = `${window.location.origin}/room/${code}`;
 
     return (
       <div className={styles.pageScroll}>
         <div className={styles.waitingCard}>
+          {/* Toast Container Removed Here */}
+
           <div className={styles.waitingTop}>
             <h1 className={styles.waitingTitle}>
               Room <span className={styles.code}>{code}</span>
             </h1>
             <MuteButton />
           </div>
-          // ... inside the Waiting Room return ...
+
           <div className={styles.shareRow}>
             <p className={styles.waitingHint}>
               [ Share this code with friends ]
             </p>
 
-            {/* Updated: Use className instead of inline styles */}
             <div className={styles.buttonGroup}>
               {/* COPY LINK */}
               <button
-                className={styles.copyBtn}
-                onClick={() => {
-                  const link = `${window.location.origin}/room/${code}`;
-
-                  if (navigator.clipboard) {
-                    navigator.clipboard.writeText(link);
-                  } else {
-                    const temp = document.createElement("input");
-                    temp.value = link;
-                    document.body.appendChild(temp);
-                    temp.select();
-                    document.execCommand("copy");
-                    document.body.removeChild(temp);
-                  }
-
-                  setCopied(true);
-                  setTimeout(() => setCopied(false), 1500);
-                }}
+                className={`${styles.copyBtn} ${styles.iconBtn}`}
+                onClick={() => handleCopy(roomLink, "link")}
+                title="Copy Link"
               >
-                {copied ? "LINK COPIED ✓" : "COPY LINK"}
+                {copied ? "LINK COPIED ✓" : "🔗 Copy Link"}
               </button>
 
               {/* COPY CODE */}
               <button
-                className={styles.copyBtn}
-                onClick={() => {
-                  if (navigator.clipboard) {
-                    navigator.clipboard.writeText(code);
-                  } else {
-                    const temp = document.createElement("input");
-                    temp.value = code;
-                    document.body.appendChild(temp);
-                    temp.select();
-                    document.execCommand("copy");
-                    document.body.removeChild(temp);
-                  }
-
-                  setCodeCopied(true);
-                  setTimeout(() => setCodeCopied(false), 1500);
-                }}
+                className={`${styles.copyBtn} ${styles.iconBtn}`}
+                onClick={() => handleCopy(code, "code")}
+                title="Copy Code"
               >
-                {codeCopied ? "CODE COPIED ✓" : "COPY CODE"}
+                {codeCopied ? "CODE COPIED ✓" : "#️⃣ Copy Code"}
+              </button>
+
+              {/* WHATSAPP */}
+              <button
+                className={`${styles.copyBtn} ${styles.whatsappBtn} ${styles.iconBtn}`}
+                onClick={handleWhatsAppShare}
+                title="Share on WhatsApp"
+              >
+                📱 WhatsApp
+              </button>
+
+              {/* QR CODE */}
+              <button
+                className={`${styles.copyBtn} ${styles.qrBtn} ${styles.iconBtn}`}
+                onClick={() => setShowQR(!showQR)}
+                title="Show QR Code"
+              >
+                📷 QR Code
               </button>
             </div>
           </div>
-          // ... rest of Waiting Room ...
+
+          {/* QR CODE MODAL OVERLAY */}
+          {showQR && (
+            <div className={styles.qrModal} onClick={() => setShowQR(false)}>
+              <div
+                className={styles.qrContent}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <img
+                  src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(roomLink)}`}
+                  alt="Room QR"
+                  className={styles.qrImage}
+                />
+                <p className={styles.qrText}>Scan to Join</p>
+                <button
+                  className={styles.closeQrBtn}
+                  onClick={() => setShowQR(false)}
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          )}
+
           <PlayerList hostId={hostId} />
           <div className={styles.waitingActions}>
             {isHost ? (
