@@ -183,6 +183,12 @@ const gameReducer = (state, action) => {
         reactions: state.reactions.filter((r) => r.id !== action.payload),
       };
 
+    case "SOFT_RESET":
+      return {
+        ...initialState,
+        room: state.room, // keep same room
+      };
+
     case "RESET":
       return initialState;
 

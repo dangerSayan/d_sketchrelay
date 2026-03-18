@@ -117,9 +117,19 @@ const GameRoom = () => {
             ))}
           </div>
           <div className={styles.gameOverActions}>
+            {isHost && (
+              <button
+                className={styles.lobbyBtn}
+                onClick={() => socket.emit("restart-game", { roomCode: code })}
+              >
+                🔁 Play Again
+              </button>
+            )}
+
             <button className={styles.lobbyBtn} onClick={handleLeaveRoom}>
               ← Back to Lobby
             </button>
+
             <button className={styles.homeBtn} onClick={handleGoHome}>
               🏠 Home
             </button>

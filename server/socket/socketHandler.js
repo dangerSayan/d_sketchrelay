@@ -358,6 +358,44 @@ module.exports = (io) => {
     });
 
     // ═══════════════════════════════════════════════════════════
+    // EVENT: restart-game
+    // ═══════════════════════════════════════════════════════════
+    socket.on("restart-game", async ({ roomCode }) => {
+      try {
+        const room = await Room.findOne({ code: roomCode });
+        if (!room) return;
+
+        // Only host can restart
+        if (room.host.toString() !== socket.userId.toString()) {
+          return socket.emit("error", {
+            message: "Only host can restart the game",
+          });
+        }
+
+        // Reset room status
+        room.status = "waiting";
+        await room.save();
+
+        // Delete old game
+        gameManager.deleteGame(roomCode);
+
+        // Reset scores in DB
+        await Room.updateOne(
+          { code: roomCode },
+          { $set: { "players.$[].score": 0 } },
+        );
+
+        // Send updated state
+        io.to(roomCode).emit("game-restarted", {
+          players: room.players,
+          host: room.host.toString(),
+        });
+      } catch (err) {
+        console.error("restart-game error:", err);
+      }
+    });
+
+    // ═══════════════════════════════════════════════════════════
     // EVENT: disconnect
     //
     // BUG FIX: use socketId for $pull instead of userId to avoid

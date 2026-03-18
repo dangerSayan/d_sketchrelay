@@ -1,4 +1,3 @@
-// client/src/pages/Landing.jsx
 import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import useAuth from "../hooks/useAuth";
@@ -268,6 +267,7 @@ const Landing = () => {
       {/* ── Footer ───────────────────────────────────────────── */}
       <footer className={styles.footer}>
         <span>d_SketchRelay — A Skribbl-inspired multiplayer drawing game</span>
+        <span>Developed by danger_Sayan</span>
         <span className={styles.footerDeco}>
           01001000 01000101 01001100 01001100 01001111
         </span>

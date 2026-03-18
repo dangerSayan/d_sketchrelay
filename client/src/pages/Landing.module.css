@@ -1,4 +1,3 @@
-/* client/src/pages/Landing.module.css */
 @import url("https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap");
 
 :root {
@@ -855,5 +854,40 @@
   }
   .featureGrid {
     grid-template-columns: 1fr;
+  }
+}
+
+/* ── MOBILE LIGHTENING TWEAKS ───────────────────────────────────────────── */
+@media (max-width: 768px) {
+  /* 1. Lighten the background from pure black to dark charcoal */
+  .page {
+    background-color: #0f1115;
+  }
+
+  /* 2. Reduce the harsh black vignette corners */
+  .vignette {
+    background: radial-gradient(
+      circle,
+      transparent 70%,
+      rgba(0, 0, 0, 0.4) 100%
+    );
+    opacity: 0.8;
+  }
+
+  /* 3. Soften the scanlines to let more light through */
+  .scanlines {
+    opacity: 0.5;
+  }
+
+  /* 4. Lighten the text slightly for better contrast on mobile screens */
+  .heroDesc {
+    color: #b0b0b0;
+  }
+
+  /* 5. Lighten the cards so they don't blend into the dark bg */
+  .previewCard,
+  .featureCard {
+    background: rgba(255, 255, 255, 0.04);
+    border-color: rgba(255, 255, 255, 0.1);
   }
 }

@@ -253,6 +253,24 @@ const useSocket = (roomCode, user) => {
       });
     });
 
+    socket.on("game-restarted", ({ players, host }) => {
+      dispatch({ type: "SOFT_RESET" });
+
+      dispatch({
+        type: "SET_ROOM",
+        payload: {
+          host,
+          players,
+          status: "waiting",
+        },
+      });
+
+      dispatch({
+        type: "UPDATE_PLAYERS",
+        payload: players,
+      });
+    });
+
     return () => {
       if (choiceTimerRef.current) clearInterval(choiceTimerRef.current);
       socket.off("connect", doJoin);

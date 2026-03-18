@@ -50,9 +50,14 @@ const Login = () => {
 
       <div className={styles.card}>
         <h1 className={styles.title}>
-          <span className={styles.glitch} data-text="d_SketchRelay">
-            d_SketchRelay
+          <span className={styles.glitch} data-text="d_Sketch">
+            d_Sketch
           </span>
+
+          <span className={styles.glitch} data-text="Relay">
+            Relay
+          </span>
+
           <span className={styles.cursor}>_</span>
         </h1>
         <p className={styles.subtitle}>&lt; SYSTEM_ACCESS /&gt;</p>
