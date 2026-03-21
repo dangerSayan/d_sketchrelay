@@ -3,26 +3,39 @@ import { useNavigate } from "react-router-dom";
 import useAuth from "../hooks/useAuth";
 import { authAPI } from "../api/index";
 import Avatar from "../components/Avatar";
-import { AVATAR_PRESETS } from "../utils/avatar";
+import {
+  AVATAR_CHARACTERS,
+  AVATAR_BACKGROUNDS,
+  AVATAR_FRAME_PRESETS,
+  CHARACTER_CATEGORIES,
+  buildAvatarString,
+  parseAvatarString,
+} from "../utils/avatar";
 import styles from "./Profile.module.css";
 
 const Profile = () => {
   const navigate = useNavigate();
   const { user, updateUser, logout } = useAuth();
   const [username, setUsername] = useState("");
-  const [selectedAvatar, setSelectedAvatar] = useState("");
 
-  // State for Tabs
-  const [activeTab, setActiveTab] = useState("identity"); // 'identity' | 'security'
+  // ── Avatar builder state ───────────────────────────────────────────────
+  const [avatarStep, setAvatarStep] = useState("character"); // "character" | "background" | "frame"
+  const [charFilter, setCharFilter] = useState("All");
+  const [selIcon, setSelIcon] = useState("🐉");
+  const [selBg, setSelBg] = useState("bg_indigo");
+  const [selFrame, setSelFrame] = useState("neon_blue");
 
-  // Form States
+  // Current preview avatar string
+  const previewAvatar = buildAvatarString(selIcon, selBg, selFrame);
+
+  // ── Other state ────────────────────────────────────────────────────────
+  const [activeTab, setActiveTab] = useState("identity");
   const [saving, setSaving] = useState(false);
   const [changingPassword, setChangingPassword] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [passwordMessage, setPasswordMessage] = useState("");
   const [passwordError, setPasswordError] = useState("");
-
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmNewPassword, setConfirmNewPassword] = useState("");
@@ -30,33 +43,32 @@ const Profile = () => {
   useEffect(() => {
     if (!user) return;
     setUsername(user.username || "");
-    setSelectedAvatar(user.avatar || "");
+
+    // Parse existing avatar into parts
+    const parsed = parseAvatarString(user.avatar || "");
+    if (parsed.icon) setSelIcon(parsed.icon);
+    if (parsed.bgId) setSelBg(parsed.bgId);
+    if (parsed.frameId) setSelFrame(parsed.frameId);
   }, [user]);
 
-  if (!user) {
-    return null;
-  }
+  if (!user) return null;
 
   const handleSaveProfile = async (e) => {
     e.preventDefault();
     setMessage("");
     setError("");
-
     if (!username.trim()) {
       setError("Username cannot be empty");
       return;
     }
-
     setSaving(true);
-
     try {
       const res = await authAPI.updateMe({
         username: username.trim(),
-        avatar: selectedAvatar,
+        avatar: previewAvatar,
       });
       updateUser(res.data.user);
       setMessage("Identity updated successfully.");
-      // Clear message after 3 seconds
       setTimeout(() => setMessage(""), 3000);
     } catch (err) {
       setError(err.response?.data?.message || "Could not update profile.");
@@ -69,18 +81,14 @@ const Profile = () => {
     e.preventDefault();
     setPasswordMessage("");
     setPasswordError("");
-
     if (!currentPassword || !newPassword || !confirmNewPassword) {
       setPasswordError("All security fields are required.");
       return;
     }
-
     if (newPassword !== confirmNewPassword) {
       setPasswordError("New passwords do not match.");
       return;
     }
-
-    // Password Regex (At least 8 chars, 1 uppercase, 1 lowercase, 1 number, 1 special)
     const passwordRegex =
       /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]).{8,}$/;
     if (!passwordRegex.test(newPassword)) {
@@ -89,7 +97,6 @@ const Profile = () => {
       );
       return;
     }
-
     setChangingPassword(true);
     try {
       const res = await authAPI.changePassword({
@@ -101,7 +108,6 @@ const Profile = () => {
       setCurrentPassword("");
       setNewPassword("");
       setConfirmNewPassword("");
-      // Clear message after 3 seconds
       setTimeout(() => setPasswordMessage(""), 3000);
     } catch (err) {
       setPasswordError(
@@ -112,13 +118,15 @@ const Profile = () => {
     }
   };
 
-  const handleDefaultAvatar = () => {
-    setSelectedAvatar("");
-  };
+  // Characters filtered by category tab
+  const charTabs = ["All", ...CHARACTER_CATEGORIES];
+  const visibleChars =
+    charFilter === "All"
+      ? AVATAR_CHARACTERS
+      : AVATAR_CHARACTERS.filter((c) => c.category === charFilter);
 
   return (
     <div className={styles.page}>
-      {/* Background Grid Effect */}
       <div className={styles.bgGrid}></div>
 
       <div className={styles.container}>
@@ -131,8 +139,8 @@ const Profile = () => {
           <div className={styles.userPreview}>
             <Avatar
               username={username || "GUEST"}
-              avatar={selectedAvatar}
-              size={48}
+              avatar={previewAvatar}
+              size={52}
             />
             <div className={styles.userMeta}>
               <span className={styles.status}>
@@ -142,7 +150,7 @@ const Profile = () => {
           </div>
         </header>
 
-        {/* Tabs Navigation */}
+        {/* Tabs */}
         <div className={styles.tabs}>
           <button
             className={`${styles.tab} ${activeTab === "identity" ? styles.activeTab : ""}`}
@@ -158,10 +166,11 @@ const Profile = () => {
           </button>
         </div>
 
-        {/* ── TAB CONTENT: IDENTITY ───────────────────────────────────────────────────── */}
+        {/* ── IDENTITY TAB ──────────────────────────────────────────────── */}
         {activeTab === "identity" && (
           <div className={styles.contentPanel}>
             <form onSubmit={handleSaveProfile}>
+              {/* Username */}
               <div className={styles.formGroup}>
                 <label className={styles.label}>USERNAME</label>
                 <input
@@ -174,6 +183,7 @@ const Profile = () => {
                 />
               </div>
 
+              {/* Email (locked) */}
               <div className={styles.formGroup}>
                 <label className={styles.label}>EMAIL ADDRESS (LOCKED)</label>
                 <div className={styles.lockedInputWrapper}>
@@ -187,36 +197,132 @@ const Profile = () => {
                 </div>
               </div>
 
+              {/* ── AVATAR BUILDER ──────────────────────────────────────── */}
               <div className={styles.formGroup}>
-                <label className={styles.label}>AVATAR PRESET</label>
-                <div className={styles.avatarGrid}>
-                  <button
-                    type="button"
-                    onClick={handleDefaultAvatar}
-                    className={`${styles.presetItem} ${!selectedAvatar ? styles.activePreset : ""}`}
-                    title="Auto-generated Color"
-                  >
-                    <Avatar username={username} avatar={""} size={48} />
-                    <span>AUTO</span>
-                  </button>
-                  {AVATAR_PRESETS.map((preset) => (
-                    <button
-                      key={preset.id}
-                      type="button"
-                      onClick={() => setSelectedAvatar(preset.id)}
-                      className={`${styles.presetItem} ${selectedAvatar === preset.id ? styles.activePreset : ""}`}
-                      title={preset.label}
-                    >
-                      <Avatar
-                        username={username}
-                        avatar={preset.id}
-                        size={48}
-                      />
-                      <span>{preset.icon}</span>
-                    </button>
-                  ))}
+                <label className={styles.label}>AVATAR BUILDER</label>
+
+                {/* Live preview + step indicator */}
+                <div className={styles.avatarBuilderHeader}>
+                  <Avatar
+                    username={username}
+                    avatar={previewAvatar}
+                    size={64}
+                  />
+                  <div className={styles.stepIndicators}>
+                    {["character", "background", "frame"].map((step, i) => (
+                      <button
+                        key={step}
+                        type="button"
+                        className={`${styles.stepBtn} ${avatarStep === step ? styles.stepBtnActive : ""}`}
+                        onClick={() => setAvatarStep(step)}
+                      >
+                        <span className={styles.stepNum}>{i + 1}</span>
+                        <span className={styles.stepLabel}>
+                          {step === "character"
+                            ? "CHARACTER"
+                            : step === "background"
+                              ? "BACKGROUND"
+                              : "FRAME"}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
+
+                {/* ── STEP 1: Character ─────────────────────────────────── */}
+                {avatarStep === "character" && (
+                  <div className={styles.builderPanel}>
+                    <div className={styles.builderTabs}>
+                      {charTabs.map((tab) => (
+                        <button
+                          key={tab}
+                          type="button"
+                          className={`${styles.filterTab} ${charFilter === tab ? styles.filterTabActive : ""}`}
+                          onClick={() => setCharFilter(tab)}
+                        >
+                          {tab.toUpperCase()}
+                        </button>
+                      ))}
+                    </div>
+                    <div className={styles.charGrid}>
+                      {visibleChars.map((c) => (
+                        <button
+                          key={c.id}
+                          type="button"
+                          className={`${styles.charCell} ${selIcon === c.id ? styles.charCellSelected : ""}`}
+                          onClick={() => setSelIcon(c.id)}
+                          title={c.label}
+                        >
+                          <span className={styles.charEmoji}>{c.id}</span>
+                          <span className={styles.charLabel}>{c.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* ── STEP 2: Background ───────────────────────────────── */}
+                {avatarStep === "background" && (
+                  <div className={styles.builderPanel}>
+                    <div className={styles.bgGrid2}>
+                      {AVATAR_BACKGROUNDS.map((bg) => (
+                        <button
+                          key={bg.id}
+                          type="button"
+                          className={`${styles.bgCell} ${selBg === bg.id ? styles.bgCellSelected : ""}`}
+                          onClick={() => setSelBg(bg.id)}
+                          title={bg.label}
+                        >
+                          <div
+                            className={styles.bgSwatch}
+                            style={{ background: bg.value }}
+                          >
+                            <span style={{ fontSize: "1.2rem" }}>
+                              {selIcon}
+                            </span>
+                          </div>
+                          <span className={styles.bgLabel}>{bg.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* ── STEP 3: Frame ─────────────────────────────────────── */}
+                {avatarStep === "frame" && (
+                  <div className={styles.builderPanel}>
+                    <div className={styles.frameGrid}>
+                      {AVATAR_FRAME_PRESETS.map((f) => (
+                        <button
+                          key={f.id}
+                          type="button"
+                          className={`${styles.frameCell} ${selFrame === f.id ? styles.frameCellSelected : ""}`}
+                          onClick={() => setSelFrame(f.id)}
+                          title={f.label}
+                        >
+                          <div className={styles.framePreview}>
+                            <div
+                              className={styles.frameSwatch}
+                              style={{
+                                background:
+                                  AVATAR_BACKGROUNDS.find((b) => b.id === selBg)
+                                    ?.value || "#6366f1",
+                                boxShadow: f.value,
+                              }}
+                            >
+                              <span style={{ fontSize: "1.1rem" }}>
+                                {selIcon}
+                              </span>
+                            </div>
+                          </div>
+                          <span className={styles.frameLabel}>{f.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
+              {/* ── END AVATAR BUILDER ────────────────────────────────── */}
 
               <div className={styles.actions}>
                 {error && <p className={styles.error}>{error}</p>}
@@ -233,7 +339,7 @@ const Profile = () => {
           </div>
         )}
 
-        {/* ── TAB CONTENT: SECURITY ───────────────────────────────────────────────────── */}
+        {/* ── SECURITY TAB (unchanged) ──────────────────────────────────── */}
         {activeTab === "security" && (
           <div className={styles.contentPanel}>
             <form onSubmit={handleChangePassword}>
@@ -243,7 +349,6 @@ const Profile = () => {
                   /!\\ Current password is required to make changes.
                 </span>
               </p>
-
               <div className={styles.formGroup}>
                 <label className={styles.label}>CURRENT PASSWORD</label>
                 <input
@@ -254,7 +359,6 @@ const Profile = () => {
                   placeholder="••••••••"
                 />
               </div>
-
               <div className={styles.formGroup}>
                 <label className={styles.label}>NEW PASSWORD</label>
                 <input
@@ -265,7 +369,6 @@ const Profile = () => {
                   placeholder="•••••••••••"
                 />
               </div>
-
               <div className={styles.formGroup}>
                 <label className={styles.label}>CONFIRM NEW PASSWORD</label>
                 <input
@@ -276,12 +379,10 @@ const Profile = () => {
                   placeholder="•••••••••••"
                 />
               </div>
-
               {passwordError && <p className={styles.error}>{passwordError}</p>}
               {passwordMessage && (
                 <p className={styles.success}>{passwordMessage}</p>
               )}
-
               <button
                 type="submit"
                 className={styles.securityBtn}
@@ -293,7 +394,7 @@ const Profile = () => {
           </div>
         )}
 
-        {/* Footer / Global Actions */}
+        {/* Footer */}
         <div className={styles.footer}>
           <button className={styles.backBtn} onClick={() => navigate("/lobby")}>
             ← BACK TO LOBBY

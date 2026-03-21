@@ -270,9 +270,34 @@ const useSocket = (roomCode, user) => {
         payload: players,
       });
     });
+    // ── 🔥 RECONNECT FIX (WhatsApp / tab switch issue) ─────────────────
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        if (!socket.connected) {
+          console.log("🔄 Reconnecting socket (visibility change)");
+          socket.connect();
+          socket.once("connect", doJoin);
+        }
+      }
+    };
+
+    const handlePageShow = (e) => {
+      if (e.persisted) {
+        if (!socket.connected) {
+          console.log("🔄 Reconnecting socket (pageshow)");
+          socket.connect();
+          socket.once("connect", doJoin);
+        }
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("pageshow", handlePageShow);
 
     return () => {
       if (choiceTimerRef.current) clearInterval(choiceTimerRef.current);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("pageshow", handlePageShow);
       socket.off("connect", doJoin);
       socket.off("player-joined");
       socket.off("spectator-joined");

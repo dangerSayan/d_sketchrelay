@@ -45,7 +45,13 @@ app.get("/", (req, res) => {
 // Replace the old io.on('connection',...) block with this one line:
 socketHandler(io); // ADD THIS — wires all socket events
 
-connectDB().then(() => {
+connectDB().then(async () => {
+  // Clean up orphaned rooms from previous server crashes
+  const Room = require("./models/Room");
+  const { deletedCount } = await Room.deleteMany({ status: "playing" });
+  if (deletedCount > 0)
+    console.log(`🧹 Cleaned up ${deletedCount} stale rooms`);
+
   httpServer.listen(process.env.PORT || 5000, () => {
     console.log(`Server running on port ${process.env.PORT || 5000}`);
   });

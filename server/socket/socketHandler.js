@@ -9,18 +9,6 @@ module.exports = (io) => {
   io.on("connection", (socket) => {
     console.log(`Socket connected: ${socket.id}`);
 
-    // ═══════════════════════════════════════════════════════════
-    // EVENT: join-room
-    //
-    // ROOT CAUSE OF BUG #1 FIXED HERE:
-    // Previously we did Room.updateOne() to set socketId, then Room.findOne()
-    // to get the updated room. But if the player wasn't in the DB yet (first
-    // join race), updateOne matched nothing, and findOne returned stale data.
-    //
-    // Fix: use findOneAndUpdate with upsert-style logic — if the player exists,
-    // update their socketId. If they don't exist in players array, add them.
-    // Then emit the authoritative room state from the DB result.
-    // ═══════════════════════════════════════════════════════════
     socket.on("join-room", async ({ roomCode, user }) => {
       try {
         socket.join(roomCode);
@@ -29,18 +17,15 @@ module.exports = (io) => {
         socket.username = user.username;
         socket.isSpectator = false;
 
-        // Check if player is already in the room
         const room = await Room.findOne({ code: roomCode });
-        if (!room) {
-          return socket.emit("error", { message: "Room not found" });
-        }
+        if (!room) return socket.emit("error", { message: "Room not found" });
 
         const alreadyIn = room.players.find(
           (p) => p.userId.toString() === user.id.toString(),
         );
 
         if (alreadyIn) {
-          // Update their socketId and avatar in place
+          // Reconnecting player — update socketId and avatar
           await Room.updateOne(
             { code: roomCode, "players.userId": user.id },
             {
@@ -50,14 +35,20 @@ module.exports = (io) => {
               },
             },
           );
-        } else if (room.status === "waiting") {
-          // 🔥 HARD LIMIT CHECK (VERY IMPORTANT)
-          const activePlayers = room.players.filter((p) => !p.isSpectator);
 
+          // Also sync into in-memory game
+          const activeGame = gameManager.getGame(roomCode);
+          if (activeGame) {
+            const p = activeGame.players.find(
+              (p) => p.userId.toString() === user.id.toString(),
+            );
+            if (p) p.socketId = socket.id;
+          }
+        } else if (room.status === "waiting") {
+          // ── NEW PLAYER joining a waiting room ───────────────
+          const activePlayers = room.players.filter((p) => !p.isSpectator);
           if (activePlayers.length >= room.maxPlayers) {
-            return socket.emit("error", {
-              message: "Room is full",
-            });
+            return socket.emit("error", { message: "Room is full" });
           }
 
           await Room.updateOne(
@@ -75,9 +66,75 @@ module.exports = (io) => {
               },
             },
           );
+        } else if (room.status === "playing") {
+          // ── NEW PLAYER joining a game already in progress ───
+          // Like Skribbl.io: allowed if room isn't full.
+          // Player starts with 0 points and joins from the next turn.
+          const activePlayers = room.players.filter((p) => !p.isSpectator);
+          if (activePlayers.length >= room.maxPlayers) {
+            return socket.emit("error", { message: "Room is full" });
+          }
+
+          // Add to MongoDB
+          await Room.updateOne(
+            { code: roomCode },
+            {
+              $push: {
+                players: {
+                  userId: user.id,
+                  username: user.username,
+                  avatar: user.avatar || "",
+                  socketId: socket.id,
+                  isHost: false,
+                  score: 0,
+                },
+              },
+            },
+          );
+
+          // Add to the live in-memory game so they can guess this turn
+          const activeGame = gameManager.getGame(roomCode);
+          if (activeGame) {
+            gameManager.addPlayer(roomCode, {
+              userId: user.id.toString(),
+              username: user.username,
+              avatar: user.avatar || "",
+              socketId: socket.id,
+              score: 0,
+              hasGuessedCorrectly: false,
+            });
+          }
+
+          // Notify everyone a new player joined mid-game
+          const freshRoom = await Room.findOne({ code: roomCode });
+          if (!freshRoom) return;
+
+          io.to(roomCode).emit("player-joined", {
+            players: freshRoom.players,
+            host: freshRoom.host.toString(),
+            message: `${user.username} joined mid-game`,
+          });
+
+          // Send full current game state to the late joiner
+          if (activeGame) {
+            const { guessed, total } = gameManager.getGuessedCount(roomCode);
+            socket.emit("game-state-sync", {
+              currentDrawer: gameManager.getCurrentDrawer(roomCode),
+              wordHint: activeGame.currentHint,
+              timeLeft: activeGame.timeLeft,
+              scores: gameManager.getScoreboard(roomCode),
+              round: activeGame.currentRound,
+              maxRounds: activeGame.settings.rounds,
+              guessedCount: guessed,
+              totalGuessers: total,
+              choosingWord: activeGame.choosingWord,
+            });
+          }
+
+          return; // already emitted player-joined + game-state-sync above
         }
 
-        // Sync socketId into live in-memory game if running
+        // ── Sync socketId into live in-memory game (reconnect path) ────
         const activeGame = gameManager.getGame(roomCode);
         if (activeGame) {
           const p = activeGame.players.find(
@@ -86,19 +143,17 @@ module.exports = (io) => {
           if (p) p.socketId = socket.id;
         }
 
-        // Fetch the fresh authoritative room state
+        // Fresh room state for broadcast
         const freshRoom = await Room.findOne({ code: roomCode });
         if (!freshRoom) return;
 
-        // Broadcast to EVERYONE in the room including the joiner
-        // so all clients get the exact same updated player list
         io.to(roomCode).emit("player-joined", {
           players: freshRoom.players,
           host: freshRoom.host.toString(),
           message: `${user.username} joined the room`,
         });
 
-        // If game is in progress, send current state to reconnecting player
+        // Send game state to reconnecting player
         if (activeGame) {
           const { guessed, total } = gameManager.getGuessedCount(roomCode);
           socket.emit("game-state-sync", {
@@ -136,15 +191,8 @@ module.exports = (io) => {
         const alreadyIn = room.players.find(
           (p) => p.userId.toString() === user.id.toString(),
         );
-        if (!alreadyIn) {
-          // 🔥 ADD THIS BLOCK RIGHT HERE
-          const activePlayers = room.players.filter((p) => !p.isSpectator);
 
-          if (activePlayers.length >= room.maxPlayers) {
-            return socket.emit("error", {
-              message: "Room is full",
-            });
-          }
+        if (!alreadyIn) {
           await Room.updateOne(
             { code: roomCode },
             {
@@ -291,8 +339,6 @@ module.exports = (io) => {
 
     // ═══════════════════════════════════════════════════════════
     // EVENT: canvas-state
-    // Drawer sends full canvas PNG after fill / undo / redo so all
-    // clients stay in sync without replaying individual commands.
     // ═══════════════════════════════════════════════════════════
     socket.on("canvas-state", ({ roomCode, dataURL }) => {
       const game = gameManager.getGame(roomCode);
@@ -304,7 +350,6 @@ module.exports = (io) => {
 
     // ═══════════════════════════════════════════════════════════
     // EVENT: cursor-move
-    // Drawer cursor position — broadcast to all watchers.
     // ═══════════════════════════════════════════════════════════
     socket.on("cursor-move", ({ roomCode, x, y }) => {
       const game = gameManager.getGame(roomCode);
@@ -318,7 +363,6 @@ module.exports = (io) => {
 
     // ═══════════════════════════════════════════════════════════
     // EVENT: shape-preview
-    // Drawer broadcasts live shape drag so others see it in real time.
     // ═══════════════════════════════════════════════════════════
     socket.on("shape-preview", ({ roomCode, preview }) => {
       const game = gameManager.getGame(roomCode);
@@ -393,27 +437,22 @@ module.exports = (io) => {
         const room = await Room.findOne({ code: roomCode });
         if (!room) return;
 
-        // Only host can restart
         if (room.host.toString() !== socket.userId.toString()) {
           return socket.emit("error", {
             message: "Only host can restart the game",
           });
         }
 
-        // Reset room status
         room.status = "waiting";
         await room.save();
 
-        // Delete old game
         gameManager.deleteGame(roomCode);
 
-        // Reset scores in DB
         await Room.updateOne(
           { code: roomCode },
           { $set: { "players.$[].score": 0 } },
         );
 
-        // Send updated state
         io.to(roomCode).emit("game-restarted", {
           players: room.players,
           host: room.host.toString(),
@@ -424,89 +463,108 @@ module.exports = (io) => {
     });
 
     // ═══════════════════════════════════════════════════════════
-    // EVENT: disconnect
-    //
-    // BUG FIX: use socketId for $pull instead of userId to avoid
-    // ObjectId vs string cast mismatch that silently failed before
+    // EVENT: disconnect  (8-second grace period for mobile)
     // ═══════════════════════════════════════════════════════════
     socket.on("disconnect", async () => {
       console.log(`Socket disconnected: ${socket.id}`);
       if (!socket.roomCode || !socket.userId) return;
 
-      try {
-        const { roomCode, userId, username, isSpectator } = socket;
+      const { roomCode, userId, username, isSpectator } = socket;
 
-        // Pull by socketId — always a plain string, never a cast issue
-        await Room.updateOne(
-          { code: roomCode },
-          { $pull: { players: { socketId: socket.id } } },
-        );
+      setTimeout(async () => {
+        try {
+          const room = await Room.findOne({ code: roomCode });
+          if (!room) return;
 
-        const room = await Room.findOne({ code: roomCode });
+          const player = room.players.find(
+            (p) => p.userId.toString() === userId.toString(),
+          );
 
-        // Room is empty — delete it entirely
-        if (!room || room.players.filter((p) => !p.isSpectator).length === 0) {
-          if (room) await Room.deleteOne({ code: roomCode });
-          gameManager.deleteGame(roomCode);
-          return;
-        }
-
-        io.to(roomCode).emit("player-left", {
-          username,
-          players: room.players,
-          host: room.host.toString(),
-          isSpectator,
-        });
-
-        // Transfer host if host left during waiting
-        if (
-          !isSpectator &&
-          room.host.toString() === userId.toString() &&
-          room.status === "waiting"
-        ) {
-          const newHost =
-            room.players.find((p) => !p.isSpectator) || room.players[0];
-          if (newHost) {
-            await Room.updateOne(
-              { code: roomCode },
-              {
-                $set: {
-                  host: newHost.userId,
-                  "players.$[el].isHost": true,
-                },
-              },
-              { arrayFilters: [{ "el.userId": newHost.userId }] },
-            );
-            const updatedRoom = await Room.findOne({ code: roomCode });
-            io.to(roomCode).emit("host-changed", {
-              newHostId: newHost.userId.toString(),
-              newHostUsername: newHost.username,
-              players: updatedRoom.players,
-              host: newHost.userId.toString(),
-            });
+          // Player already reconnected with a new socketId — leave them alone
+          if (!player || player.socketId !== socket.id) {
+            console.log("⚡ Player reconnected, skipping removal");
+            return;
           }
-        }
 
-        // Handle in-progress game
-        const game = gameManager.getGame(roomCode);
-        if (game) {
-          if (isSpectator) {
-            gameManager.removeSpectator(roomCode, userId);
-          } else {
-            gameManager.removePlayer(roomCode, userId);
-            if (game.players.length < 2) {
-              gameManager.deleteGame(roomCode);
-              await Room.updateOne({ code: roomCode }, { status: "finished" });
-              io.to(roomCode).emit("game-over", {
-                reason: "Not enough players",
-                finalScores: [],
+          console.log("❌ Removing disconnected player:", username);
+
+          await Room.updateOne(
+            { code: roomCode },
+            { $pull: { players: { socketId: socket.id } } },
+          );
+
+          const updatedRoom = await Room.findOne({ code: roomCode });
+
+          if (
+            !updatedRoom ||
+            updatedRoom.players.filter((p) => !p.isSpectator).length === 0
+          ) {
+            if (updatedRoom) await Room.deleteOne({ code: roomCode });
+            gameManager.deleteGame(roomCode);
+            return;
+          }
+
+          io.to(roomCode).emit("player-left", {
+            username,
+            players: updatedRoom.players,
+            host: updatedRoom.host.toString(),
+            isSpectator,
+          });
+
+          if (
+            !isSpectator &&
+            updatedRoom.host.toString() === userId.toString() &&
+            updatedRoom.status === "waiting"
+          ) {
+            const newHost =
+              updatedRoom.players.find((p) => !p.isSpectator) ||
+              updatedRoom.players[0];
+
+            if (newHost) {
+              await Room.updateOne(
+                { code: roomCode },
+                {
+                  $set: {
+                    host: newHost.userId,
+                    "players.$[el].isHost": true,
+                  },
+                },
+                { arrayFilters: [{ "el.userId": newHost.userId }] },
+              );
+
+              const finalRoom = await Room.findOne({ code: roomCode });
+              io.to(roomCode).emit("host-changed", {
+                newHostId: newHost.userId.toString(),
+                newHostUsername: newHost.username,
+                players: finalRoom.players,
+                host: newHost.userId.toString(),
               });
             }
           }
+
+          const game = gameManager.getGame(roomCode);
+          if (game) {
+            if (isSpectator) {
+              gameManager.removeSpectator(roomCode, userId);
+            } else {
+              gameManager.removePlayer(roomCode, userId);
+              if (game.players.length < 2) {
+                gameManager.deleteGame(roomCode);
+                await Room.updateOne(
+                  { code: roomCode },
+                  { status: "finished" },
+                );
+                io.to(roomCode).emit("game-over", {
+                  reason: "Not enough players",
+                  finalScores: [],
+                });
+              }
+            }
+          }
+        } catch (err) {
+          console.error("disconnect error:", err);
         }
-      } catch (err) {
-        console.error("disconnect error:", err);
-      }
+      }, 8000);
     });
   });
 };
@@ -554,8 +612,6 @@ function beginTurn(io, roomCode, chosenWord) {
 
   const drawer = gameManager.getCurrentDrawer(roomCode);
 
-  // BUG FIX #4: explicitly clear canvas BEFORE broadcasting new-turn
-  // so no stale stroke from the previous turn bleeds through
   io.to(roomCode).emit("canvas-cleared");
 
   io.to(roomCode).emit("new-turn", {
@@ -610,7 +666,6 @@ function endTurn(io, roomCode) {
     scores: gameManager.getScoreboard(roomCode),
   });
 
-  // Clear canvas at end of turn too
   io.to(roomCode).emit("canvas-cleared");
 
   const { gameOver, players } = gameManager.advanceTurn(roomCode);
@@ -636,6 +691,19 @@ async function saveFinalScores(roomCode, players) {
           { $inc: { totalScore: p.score, gamesPlayed: 1 } },
         ),
       ),
+    );
+    // Auto-delete after 5 minutes if nobody restarted
+    setTimeout(
+      async () => {
+        try {
+          const room = await Room.findOne({ code: roomCode });
+          if (room && room.status === "finished") {
+            await Room.deleteOne({ code: roomCode });
+            console.log(`🧹 Auto-deleted finished room ${roomCode}`);
+          }
+        } catch (_) {}
+      },
+      5 * 60 * 1000,
     );
   } catch (err) {
     console.error("saveFinalScores error:", err);

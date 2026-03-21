@@ -1,3 +1,5 @@
+/* client/src/components/PlayerList.module.css */
+
 @import url("https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap");
 
 .wrapper {
@@ -73,7 +75,7 @@
   align-items: center;
   gap: 6px;
   min-width: 0;
-  overflow: hidden;
+  /* overflow: hidden; <--- REMOVED: This was clipping the avatar shadow */
 }
 
 .pencil {
@@ -88,6 +90,10 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  /* ADDED: Makes the name fill available space and shrink if needed */
+  flex: 1;
+  /* ADDED: Essential for text-overflow to work inside a flex container */
+  min-width: 0;
 }
 
 .drawerName {
