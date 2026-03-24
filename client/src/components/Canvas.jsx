@@ -140,6 +140,36 @@ const Canvas = ({ roomCode, isDrawer }) => {
 
   const { gameState } = useContext(GameContext);
 
+  // ── Cursor Logic Helper (MS Paint / Draw.io Style) ─────────────────────
+  const getCursorStyle = (tool) => {
+    // 1. Pencil: Classic Yellow Pencil with Black Tip (Hotspot at tip)
+    const pencilCursor = `url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32" fill="none" stroke="black" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 22L0 32L8 30L28 10L22 4L6 22Z" fill="%23FACC15" stroke="black"/><path d="M8 30L28 10L26 8L6 28L8 30Z" fill="%2394A3B8" stroke="black"/><path d="M0 32L8 30L6 28L0 32Z" fill="%23FCA5A5" stroke="black"/></svg>') 0 32, auto`;
+
+    // 2. Eraser: White Square with Border (Hotspot in center)
+    const eraserCursor = `url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="2"><rect x="1" y="1" width="22" height="22" fill="white" stroke="black"/></svg>') 12 12, auto`;
+
+    // 3. Crosshair: Precise Plus Sign (Hotspot in center)
+    const crosshairCursor = `url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="2"><line x1="12" y1="0" x2="12" y2="24"/><line x1="0" y1="12" x2="24" y2="12"/></svg>') 12 12, auto`;
+
+    // 4. Fill Bucket: Paint Bucket Icon (Hotspot at spout tip)
+    const fillCursor = `url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32" fill="none" stroke="black" stroke-width="1.5"><path d="M4 10L8 30H24L28 10H4Z" fill="%233B82F6" stroke="black"/><path d="M4 10L6 4H26L28 10H4Z" fill="%23FACC15" stroke="black"/><path d="M12 18C12 18 14 22 16 22C18 22 20 18 20 18" stroke="white" stroke-width="2" stroke-linecap="round"/></svg>') 16 30, auto`;
+
+    switch (tool) {
+      case "pen":
+        return pencilCursor;
+      case "eraser":
+        return eraserCursor;
+      case "fill":
+        return fillCursor;
+      case "line":
+      case "rect":
+      case "circle":
+        return crosshairCursor;
+      default:
+        return "default";
+    }
+  };
+
   // ── Helpers ──────────────────────────────────────────────────────────────
   const setTool = (t) => {
     toolRef.current = t;
@@ -670,7 +700,7 @@ const Canvas = ({ roomCode, isDrawer }) => {
           style={{
             pointerEvents: isDrawer ? "auto" : "none",
             touchAction: isDrawer ? "none" : "auto",
-            cursor: isDrawer ? "crosshair" : "default",
+            cursor: isDrawer ? getCursorStyle(activeTool) : "default",
           }}
         />
 
